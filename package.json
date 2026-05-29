@@ -1,0 +1,19 @@
+{
+  "name": "the-boudin-company-rewards",
+  "version": "1.0.0",
+  "description": "Cajun-themed Loyalty and Rewards MVP for The Boudin Company",
+  "main": "server/dist/index.js",
+  "scripts": {
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server",
+    "build": "npm run build --prefix client && npm run build --prefix server",
+    "start": "npm start --prefix server",
+    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "db:migrate": "npm run db:migrate --prefix server",
+    "db:seed": "npm run db:seed --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "author": "Antigravity",
+  "license": "ISC"
+}

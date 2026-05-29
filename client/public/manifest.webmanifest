@@ -1,0 +1,22 @@
+{
+  "name": "Boudin Boss Rewards",
+  "short_name": "Boudin Rewards",
+  "description": "Scan. Eat. Earn. Become a Boudin Boss with The Boudin Company Rewards.",
+  "start_url": "/app/dashboard",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#2E3033",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
