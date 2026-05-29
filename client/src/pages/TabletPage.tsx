@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { 
   Scan, Search, PlusCircle, CheckCircle, Award, 
-  Flame, Zap, AlertTriangle, Key, LogOut, RefreshCw, X, ShieldAlert 
+  Flame, Zap, AlertTriangle, Key, LogOut, RefreshCw, X, ShieldAlert,
+  Clock
 } from "lucide-react";
 import canvasConfetti from "canvas-confetti";
 import { Html5QrcodeScanner } from "html5-qrcode";

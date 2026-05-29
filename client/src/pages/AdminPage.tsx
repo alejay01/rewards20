@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { 
   BarChart3, Users, Award, Flame, RefreshCw, FileText, 
   Settings, LogOut, Search, Plus, UserPlus, Zap, Trash, 
-  Check, X, ShieldAlert, Key, HelpCircle 
+  Check, X, ShieldAlert, Key, HelpCircle, PlusCircle
 } from "lucide-react";
 import axios from "axios";
 
@@ -47,6 +47,43 @@ export const AdminPage: React.FC = () => {
   // Form Modals states
   const [showAddRewardModal, setShowAddRewardModal] = useState(false);
   const [showAddPromoModal, setShowAddPromoModal] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+
+  // Create Customer Form State
+  const [custFirstName, setCustFirstName] = useState("");
+  const [custLastName, setCustLastName] = useState("");
+  const [custEmail, setCustEmail] = useState("");
+  const [custPhone, setCustPhone] = useState("");
+  const [custBirthday, setCustBirthday] = useState("");
+  const [custFavoriteCategory, setCustFavoriteCategory] = useState("");
+  const [custConsentPromotions, setCustConsentPromotions] = useState(false);
+  const [custStartingPoints, setCustStartingPoints] = useState("0");
+  const [custFormError, setCustFormError] = useState<string | null>(null);
+  const [custFormLoading, setCustFormLoading] = useState(false);
+
+  // Create Reward Form State
+  const [rewardName, setRewardName] = useState("");
+  const [rewardDescription, setRewardDescription] = useState("");
+  const [rewardType, setRewardType] = useState("visit"); // "visit" | "spend" | "points"
+  const [rewardPointsRequired, setRewardPointsRequired] = useState("0");
+  const [rewardVisitsRequired, setRewardVisitsRequired] = useState("0");
+  const [rewardSpendRequired, setRewardSpendRequired] = useState("0.00");
+  const [rewardHighValue, setRewardHighValue] = useState(false);
+  const [rewardManagerApproval, setRewardManagerApproval] = useState(false);
+  const [rewardFormError, setRewardFormError] = useState<string | null>(null);
+  const [rewardFormLoading, setRewardFormLoading] = useState(false);
+
+  // Create Promotion Form State
+  const [promoTitle, setPromoTitle] = useState("");
+  const [promoDescription, setPromoDescription] = useState("");
+  const [promoAudienceType, setPromoAudienceType] = useState("all");
+  const [promoStartDate, setPromoStartDate] = useState("");
+  const [promoEndDate, setPromoEndDate] = useState("");
+  const [promoFeatured, setPromoFeatured] = useState(false);
+  const [promoDoublePoints, setPromoDoublePoints] = useState(false);
+  const [promoImageUrl, setPromoImageUrl] = useState("");
+  const [promoFormError, setPromoFormError] = useState<string | null>(null);
+  const [promoFormLoading, setPromoFormLoading] = useState(false);
   
   // Loyverse action loaders
   const [syncLoading, setSyncLoading] = useState(false);
@@ -96,6 +133,102 @@ export const AdminPage: React.FC = () => {
       setSelectedCust(res.data);
     } catch (e) {
       console.error("Failed to load customer details:", e);
+    }
+  };
+
+  const handleCreateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustFormError(null);
+    setCustFormLoading(true);
+    try {
+      await apiClient.post("/api/admin/customers", {
+        firstName: custFirstName,
+        lastName: custLastName,
+        email: custEmail || undefined,
+        phone: custPhone || undefined,
+        birthday: custBirthday || undefined,
+        favoriteCategory: custFavoriteCategory || undefined,
+        consentPromotions: custConsentPromotions,
+        startingPoints: parseInt(custStartingPoints || "0")
+      });
+      setCustFirstName("");
+      setCustLastName("");
+      setCustEmail("");
+      setCustPhone("");
+      setCustBirthday("");
+      setCustFavoriteCategory("");
+      setCustConsentPromotions(false);
+      setCustStartingPoints("0");
+      setShowAddCustomerModal(false);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setCustFormError(err.response?.data?.error || "Failed to create customer.");
+    } finally {
+      setCustFormLoading(false);
+    }
+  };
+
+  const handleCreateReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRewardFormError(null);
+    setRewardFormLoading(true);
+    try {
+      await apiClient.post("/api/admin/rewards", {
+        name: rewardName,
+        description: rewardDescription || undefined,
+        rewardType,
+        pointsRequired: parseInt(rewardPointsRequired || "0"),
+        visitsRequired: parseInt(rewardVisitsRequired || "0"),
+        spendRequired: rewardSpendRequired || "0.00",
+        highValue: rewardHighValue,
+        managerApprovalRequired: rewardManagerApproval
+      });
+      setRewardName("");
+      setRewardDescription("");
+      setRewardType("visit");
+      setRewardPointsRequired("0");
+      setRewardVisitsRequired("0");
+      setRewardSpendRequired("0.00");
+      setRewardHighValue(false);
+      setRewardManagerApproval(false);
+      setShowAddRewardModal(false);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setRewardFormError(err.response?.data?.error || "Failed to create reward.");
+    } finally {
+      setRewardFormLoading(false);
+    }
+  };
+
+  const handleCreatePromotion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPromoFormError(null);
+    setPromoFormLoading(true);
+    try {
+      await apiClient.post("/api/admin/promotions", {
+        title: promoTitle,
+        description: promoDescription,
+        audienceType: promoAudienceType,
+        startDate: promoStartDate,
+        endDate: promoEndDate,
+        featured: promoFeatured,
+        doublePoints: promoDoublePoints,
+        imageUrl: promoImageUrl || undefined
+      });
+      setPromoTitle("");
+      setPromoDescription("");
+      setPromoAudienceType("all");
+      setPromoStartDate("");
+      setPromoEndDate("");
+      setPromoFeatured(false);
+      setPromoDoublePoints(false);
+      setPromoImageUrl("");
+      setShowAddPromoModal(false);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setPromoFormError(err.response?.data?.error || "Failed to create promotion.");
+    } finally {
+      setPromoFormLoading(false);
     }
   };
 
@@ -309,8 +442,8 @@ export const AdminPage: React.FC = () => {
           {activeSubTab === "customers" && (
             <div className="space-y-6">
               
-              <div className="flex justify-between items-center gap-4">
-                <div className="relative flex-1 max-w-md">
+              <div className="flex justify-between items-center gap-4 flex-wrap">
+                <div className="relative flex-1 min-w-[280px] max-w-md">
                   <input 
                     type="text" 
                     value={custSearch}
@@ -320,13 +453,22 @@ export const AdminPage: React.FC = () => {
                   />
                   <Search className="absolute left-2.5 top-3 w-3.5 h-3.5 text-gray-400" />
                 </div>
-                <button 
-                  onClick={loadOverviewMetrics}
-                  className="bg-brand-charcoal text-white hover:bg-brand-charcoal/95 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Filter Search</span>
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setShowAddCustomerModal(true)}
+                    className="bg-brand-red text-white hover:bg-brand-red/95 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>Create Customer</span>
+                  </button>
+                  <button 
+                    onClick={loadOverviewMetrics}
+                    className="bg-brand-charcoal text-white hover:bg-brand-charcoal/95 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Refresh</span>
+                  </button>
+                </div>
               </div>
 
               {/* Split Content: List or Detail */}
@@ -820,8 +962,446 @@ export const AdminPage: React.FC = () => {
             </div>
           )}
 
-        </main>
+         </main>
       </div>
+
+      {/* MODAL 1: ADD CUSTOMER MODAL */}
+      {showAddCustomerModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <PlusCircle className="w-5 h-5 text-brand-red" />
+                <span>Create Loyalty Customer</span>
+              </h4>
+              <button 
+                onClick={() => { setShowAddCustomerModal(false); setCustFormError(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {custFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {custFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCustomer} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">First Name *</label>
+                  <input 
+                    type="text" 
+                    value={custFirstName}
+                    onChange={(e) => setCustFirstName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Last Name *</label>
+                  <input 
+                    type="text" 
+                    value={custLastName}
+                    onChange={(e) => setCustLastName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Email Address (Optional)</label>
+                <input 
+                  type="email" 
+                  value={custEmail}
+                  onChange={(e) => setCustEmail(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. customer@gmail.com"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Phone Number (Optional)</label>
+                <input 
+                  type="text" 
+                  value={custPhone}
+                  onChange={(e) => setCustPhone(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. 713-555-0101"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Birthday (Optional)</label>
+                  <input 
+                    type="date" 
+                    value={custBirthday}
+                    onChange={(e) => setCustBirthday(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Favorite Item</label>
+                  <select 
+                    value={custFavoriteCategory}
+                    onChange={(e) => setCustFavoriteCategory(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  >
+                    <option value="">Select Item...</option>
+                    <option value="Boudin Links">Boudin Links</option>
+                    <option value="Boudin Balls">Boudin Balls</option>
+                    <option value="Gumbo">Gumbo</option>
+                    <option value="Crawfish Pie">Crawfish Pie</option>
+                    <option value="Daiquiri">Daiquiri</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 items-center pt-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Starting Points Balance</label>
+                  <input 
+                    type="number" 
+                    value={custStartingPoints}
+                    onChange={(e) => setCustStartingPoints(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    min="0"
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-4">
+                  <input 
+                    type="checkbox" 
+                    id="consentCheck"
+                    checked={custConsentPromotions}
+                    onChange={(e) => setCustConsentPromotions(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="consentCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Consent to Promotions
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowAddCustomerModal(false); setCustFormError(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={custFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {custFormLoading ? "Saving..." : "Save Customer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: ADD REWARD MODAL */}
+      {showAddRewardModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <PlusCircle className="w-5 h-5 text-brand-red" />
+                <span>Create Loyalty Reward</span>
+              </h4>
+              <button 
+                onClick={() => { setShowAddRewardModal(false); setRewardFormError(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {rewardFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {rewardFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateReward} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Reward Name *</label>
+                <input 
+                  type="text" 
+                  value={rewardName}
+                  onChange={(e) => setRewardName(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. Free Small Fries"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Description (Optional)</label>
+                <textarea 
+                  value={rewardDescription}
+                  onChange={(e) => setRewardDescription(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="Details of the reward..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Threshold Type *</label>
+                  <select 
+                    value={rewardType}
+                    onChange={(e) => setRewardType(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  >
+                    <option value="visit">Visit Check-In Count</option>
+                    <option value="spend">Spend (USD) Amount</option>
+                    <option value="points">Points Cost Balance</option>
+                  </select>
+                </div>
+
+                {rewardType === "visit" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Visits Required</label>
+                    <input 
+                      type="number" 
+                      value={rewardVisitsRequired}
+                      onChange={(e) => setRewardVisitsRequired(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-brand-charcoal"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {rewardType === "spend" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Spend Required ($)</label>
+                    <input 
+                      type="text" 
+                      value={rewardSpendRequired}
+                      onChange={(e) => setRewardSpendRequired(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-brand-charcoal"
+                      placeholder="0.00"
+                    />
+                  </div>
+                )}
+
+                {rewardType === "points" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Points Cost</label>
+                    <input 
+                      type="number" 
+                      value={rewardPointsRequired}
+                      onChange={(e) => setRewardPointsRequired(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-brand-charcoal"
+                      min="0"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="highValueCheck"
+                    checked={rewardHighValue}
+                    onChange={(e) => setRewardHighValue(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="highValueCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    High Value Flag
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="approvalCheck"
+                    checked={rewardManagerApproval}
+                    onChange={(e) => setRewardManagerApproval(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="approvalCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Requires Manager PIN
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowAddRewardModal(false); setRewardFormError(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={rewardFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {rewardFormLoading ? "Saving..." : "Save Reward"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: ADD PROMOTION MODAL */}
+      {showAddPromoModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <PlusCircle className="w-5 h-5 text-brand-red" />
+                <span>Create Shop Promotion</span>
+              </h4>
+              <button 
+                onClick={() => { setShowAddPromoModal(false); setPromoFormError(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {promoFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {promoFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreatePromotion} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Promotion Title *</label>
+                <input 
+                  type="text" 
+                  value={promoTitle}
+                  onChange={(e) => setPromoTitle(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. Double Points Friday"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Description *</label>
+                <textarea 
+                  value={promoDescription}
+                  onChange={(e) => setPromoDescription(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="Special details and rules..."
+                  rows={2}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Start Date *</label>
+                  <input 
+                    type="date" 
+                    value={promoStartDate}
+                    onChange={(e) => setPromoStartDate(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">End Date *</label>
+                  <input 
+                    type="date" 
+                    value={promoEndDate}
+                    onChange={(e) => setPromoEndDate(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Audience Scope</label>
+                  <select 
+                    value={promoAudienceType}
+                    onChange={(e) => setPromoAudienceType(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  >
+                    <option value="all">All Members</option>
+                    <option value="rookie">Rookies Only</option>
+                    <option value="boss">PIT Bosses Only</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Image Banner URL (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={promoImageUrl}
+                    onChange={(e) => setPromoImageUrl(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="featuredPromo"
+                    checked={promoFeatured}
+                    onChange={(e) => setPromoFeatured(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="featuredPromo" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Featured Banner
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="doublePointsPromo"
+                    checked={promoDoublePoints}
+                    onChange={(e) => setPromoDoublePoints(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="doublePointsPromo" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Trigger Double Points (2x)
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowAddPromoModal(false); setPromoFormError(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={promoFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {promoFormLoading ? "Saving..." : "Save Promotion"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

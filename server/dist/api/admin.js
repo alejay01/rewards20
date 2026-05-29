@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const crypto_1 = __importDefault(require("crypto"));
 const db_1 = require("../db");
 const schema_1 = require("../db/schema");
 const drizzle_orm_1 = require("drizzle-orm");
@@ -124,6 +125,102 @@ router.get("/customers", auth_1.authenticateToken, async (req, res, next) => {
         }
         const list = await query.orderBy((0, drizzle_orm_1.desc)(schema_1.customers.createdAt));
         return res.json(list);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+// 2.5. Customer Management: Create Customer
+router.post("/customers", auth_1.authenticateToken, (0, auth_1.requirePermission)("manage_staff"), async (req, res, next) => {
+    try {
+        const schema = zod_1.z.object({
+            firstName: zod_1.z.string().min(2),
+            lastName: zod_1.z.string().min(2),
+            email: zod_1.z.string().email().optional().or(zod_1.z.literal("")),
+            phone: zod_1.z.string().optional().or(zod_1.z.literal("")),
+            birthday: zod_1.z.string().optional().or(zod_1.z.literal("")),
+            favoriteCategory: zod_1.z.string().optional().or(zod_1.z.literal("")),
+            consentPromotions: zod_1.z.boolean().default(false),
+            startingPoints: zod_1.z.number().default(0)
+        }).refine(data => data.email || data.phone, {
+            message: "Either Email or Phone Number must be provided.",
+            path: ["email"]
+        });
+        const data = schema.parse(req.body);
+        // Check unique email
+        if (data.email) {
+            const existing = await db_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.email, data.email));
+            if (existing.length > 0) {
+                return res.status(400).json({ error: "A customer with this email already exists." });
+            }
+        }
+        // Check unique phone
+        if (data.phone) {
+            const existing = await db_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.phone, data.phone));
+            if (existing.length > 0) {
+                return res.status(400).json({ error: "A customer with this phone number already exists." });
+            }
+        }
+        const publicId = crypto_1.default.randomUUID();
+        const rewardsNumber = "BCR-" + Math.floor(100000 + Math.random() * 900000);
+        const publicQrToken = crypto_1.default.randomBytes(32).toString("hex");
+        // Fetch Rookie Roller tier ID
+        const dbTiers = await db_1.db.select().from(schema_1.tiers).where((0, drizzle_orm_1.eq)(schema_1.tiers.name, "Rookie Roller"));
+        const rookieTierId = dbTiers[0]?.id || 1;
+        // Create customer profile
+        await db_1.db.insert(schema_1.customers).values({
+            publicId,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email || null,
+            phone: data.phone || null,
+            birthday: data.birthday ? new Date(data.birthday) : null,
+            favoriteCategory: data.favoriteCategory || null,
+            consentPromotions: data.consentPromotions,
+            status: "active"
+        });
+        const newCustomers = await db_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.publicId, publicId));
+        const customer = newCustomers[0];
+        // Create loyalty account with starting points
+        await db_1.db.insert(schema_1.loyaltyAccounts).values({
+            customerId: customer.id,
+            rewardsNumber,
+            publicQrToken,
+            barcodeValue: `BAR-${rewardsNumber}`,
+            pointsBalance: data.startingPoints,
+            lifetimePoints: data.startingPoints,
+            totalVisits: data.startingPoints > 0 ? 1 : 0,
+            lifetimeSpend: "0.00",
+            currentTierId: rookieTierId
+        });
+        // If starting points > 0, log a manual adjustment in ledger
+        if (data.startingPoints > 0) {
+            const loyalty = await db_1.db.select().from(schema_1.loyaltyAccounts).where((0, drizzle_orm_1.eq)(schema_1.loyaltyAccounts.customerId, customer.id));
+            await db_1.db.insert(schema_1.pointsLedger).values({
+                customerId: customer.id,
+                loyaltyAccountId: loyalty[0].id,
+                staffUserId: req.user?.id || null,
+                type: "manual_add",
+                pointsChange: data.startingPoints,
+                balanceAfter: data.startingPoints,
+                reason: "Initial starting points allocated by administrator.",
+                source: "admin"
+            });
+        }
+        // Log to audits
+        await (0, audit_1.logAudit)(req, {
+            action: "CUSTOMER_CREATED",
+            reason: `Admin created loyalty customer: ${data.firstName} ${data.lastName} (Card: ${rewardsNumber})`
+        });
+        return res.status(201).json({
+            success: true,
+            customer: {
+                id: customer.id,
+                firstName: customer.firstName,
+                lastName: customer.lastName,
+                rewardsNumber
+            }
+        });
     }
     catch (error) {
         next(error);

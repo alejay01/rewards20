@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { db } from "../db";
 import { 
   customers, 
@@ -161,6 +162,113 @@ router.get("/customers", authenticateToken, async (req, res, next) => {
 
     const list = await query.orderBy(desc(customers.createdAt));
     return res.json(list);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 2.5. Customer Management: Create Customer
+router.post("/customers", authenticateToken, requirePermission("manage_staff"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const schema = z.object({
+      firstName: z.string().min(2),
+      lastName: z.string().min(2),
+      email: z.string().email().optional().or(z.literal("")),
+      phone: z.string().optional().or(z.literal("")),
+      birthday: z.string().optional().or(z.literal("")),
+      favoriteCategory: z.string().optional().or(z.literal("")),
+      consentPromotions: z.boolean().default(false),
+      startingPoints: z.number().default(0)
+    }).refine(data => data.email || data.phone, {
+      message: "Either Email or Phone Number must be provided.",
+      path: ["email"]
+    });
+
+    const data = schema.parse(req.body);
+
+    // Check unique email
+    if (data.email) {
+      const existing = await db.select().from(customers).where(eq(customers.email, data.email));
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "A customer with this email already exists." });
+      }
+    }
+
+    // Check unique phone
+    if (data.phone) {
+      const existing = await db.select().from(customers).where(eq(customers.phone, data.phone));
+      if (existing.length > 0) {
+        return res.status(400).json({ error: "A customer with this phone number already exists." });
+      }
+    }
+
+    const publicId = crypto.randomUUID();
+    const rewardsNumber = "BCR-" + Math.floor(100000 + Math.random() * 900000);
+    const publicQrToken = crypto.randomBytes(32).toString("hex");
+
+    // Fetch Rookie Roller tier ID
+    const dbTiers = await db.select().from(tiers).where(eq(tiers.name, "Rookie Roller"));
+    const rookieTierId = dbTiers[0]?.id || 1;
+
+    // Create customer profile
+    await db.insert(customers).values({
+      publicId,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email || null,
+      phone: data.phone || null,
+      birthday: data.birthday ? new Date(data.birthday) : null,
+      favoriteCategory: data.favoriteCategory || null,
+      consentPromotions: data.consentPromotions,
+      status: "active"
+    });
+
+    const newCustomers = await db.select().from(customers).where(eq(customers.publicId, publicId));
+    const customer = newCustomers[0];
+
+    // Create loyalty account with starting points
+    await db.insert(loyaltyAccounts).values({
+      customerId: customer.id,
+      rewardsNumber,
+      publicQrToken,
+      barcodeValue: `BAR-${rewardsNumber}`,
+      pointsBalance: data.startingPoints,
+      lifetimePoints: data.startingPoints,
+      totalVisits: data.startingPoints > 0 ? 1 : 0,
+      lifetimeSpend: "0.00",
+      currentTierId: rookieTierId
+    });
+
+    // If starting points > 0, log a manual adjustment in ledger
+    if (data.startingPoints > 0) {
+      const loyalty = await db.select().from(loyaltyAccounts).where(eq(loyaltyAccounts.customerId, customer.id));
+      await db.insert(pointsLedger).values({
+        customerId: customer.id,
+        loyaltyAccountId: loyalty[0].id,
+        staffUserId: req.user?.id || null,
+        type: "manual_add",
+        pointsChange: data.startingPoints,
+        balanceAfter: data.startingPoints,
+        reason: "Initial starting points allocated by administrator.",
+        source: "admin"
+      });
+    }
+
+    // Log to audits
+    await logAudit(req, {
+      action: "CUSTOMER_CREATED",
+      reason: `Admin created loyalty customer: ${data.firstName} ${data.lastName} (Card: ${rewardsNumber})`
+    });
+
+    return res.status(201).json({
+      success: true,
+      customer: {
+        id: customer.id,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        rewardsNumber
+      }
+    });
   } catch (error) {
     next(error);
   }
