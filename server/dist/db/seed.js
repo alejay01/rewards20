@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const index_1 = require("./index");
 const schema_1 = require("./schema");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const drizzle_orm_1 = require("drizzle-orm");
 async function main() {
     console.log("Seeding database with MVP rewards data...");
     try {
@@ -168,76 +167,8 @@ async function main() {
         for (const p of promotionsData) {
             await index_1.db.insert(schema_1.promotions).values(p);
         }
-        // 9. Seed 5 Demo Customers (Cajun Names!)
-        console.log("Seeding Cajun demo customers & loyalty profiles...");
-        const demoCustomers = [
-            { firstName: "Boudreaux", lastName: "Thibodeaux", email: "boudreaux@bayou.com", phone: "281-555-0101", points: 0, visits: 0, spend: "0.00", tierId: rookieTierId, qr: "token_boudreaux_rookie_99" },
-            { firstName: "Clotile", lastName: "Hebert", email: "clotile@cajun.com", phone: "832-555-0202", points: 35, visits: 3, spend: "35.50", tierId: buddyTierId, qr: "token_clotile_bayou_88" },
-            { firstName: "Alphonse", lastName: "Robichaux", email: "alphonse@smokehouse.com", phone: "713-555-0303", points: 62, visits: 5, spend: "68.20", tierId: regularTierId, qr: "token_alphonse_regular_77" },
-            { firstName: "Evangeline", lastName: "Arceneaux", email: "evangeline@gumbo.com", phone: "281-555-0404", points: 180, visits: 16, spend: "162.45", tierId: goldTierId, qr: "token_evangeline_gold_66" },
-            { firstName: "Remy", lastName: "Lebeau", email: "remy@boss.com", phone: "832-555-0505", points: 340, visits: 22, spend: "245.90", tierId: bossTierId, qr: "token_remy_boss_55" }
-        ];
-        for (const c of demoCustomers) {
-            // Insert customer
-            const custResult = await index_1.db.insert(schema_1.customers).values({
-                publicId: `cust-uuid-${c.firstName.toLowerCase()}`,
-                firstName: c.firstName,
-                lastName: c.lastName,
-                email: c.email,
-                phone: c.phone,
-                consentPromotions: true,
-                status: "active"
-            });
-            // Fetch the created customer
-            const newCusts = await index_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.email, c.email));
-            const newCust = newCusts[0];
-            // Generate random account number
-            const rewardsNumber = "BCR-" + Math.floor(100000 + Math.random() * 900000);
-            // Create loyalty account
-            await index_1.db.insert(schema_1.loyaltyAccounts).values({
-                customerId: newCust.id,
-                rewardsNumber,
-                publicQrToken: c.qr,
-                barcodeValue: "BAR-" + rewardsNumber,
-                pointsBalance: c.points,
-                lifetimePoints: c.points + 20, // Add 20 spent points for realism
-                totalVisits: c.visits,
-                lifetimeSpend: c.spend,
-                currentTierId: c.tierId
-            });
-            const newLoyalties = await index_1.db.select().from(schema_1.loyaltyAccounts).where((0, drizzle_orm_1.eq)(schema_1.loyaltyAccounts.customerId, newCust.id));
-            const loyaltyAcc = newLoyalties[0];
-            // Add points ledger records and visit history for realism
-            if (c.visits > 0) {
-                console.log(`Adding realistic visit history for ${c.firstName}...`);
-                // Let's log visits
-                for (let i = 1; i <= c.visits; i++) {
-                    const vDate = new Date();
-                    vDate.setDate(today.getDate() - (c.visits - i) * 3 - 2); // Spread them in the past
-                    const visitPoints = 10; // Default points per visit
-                    await index_1.db.insert(schema_1.visits).values({
-                        customerId: newCust.id,
-                        loyaltyAccountId: loyaltyAcc.id,
-                        staffUserId: 3, // Clint Team Member
-                        source: "tablet",
-                        visitDate: vDate,
-                        pointsAwarded: visitPoints,
-                        duplicateOverride: false
-                    });
-                    await index_1.db.insert(schema_1.pointsLedger).values({
-                        customerId: newCust.id,
-                        loyaltyAccountId: loyaltyAcc.id,
-                        staffUserId: 3,
-                        type: "earn_visit",
-                        pointsChange: visitPoints,
-                        balanceAfter: visitPoints * i,
-                        reason: `Earned points for visit #${i}`,
-                        source: "tablet",
-                        createdAt: new Date(vDate)
-                    });
-                }
-            }
-        }
+        // 9. Clean Seeding (Skipping Demo Customer Profiles)
+        console.log("Clean production seed requested: skipping demo customer profiles.");
         // 10. Seed System Settings
         console.log("Seeding system configuration settings...");
         const systemSettings = [
