@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 // Route imports
 import authRouter from "./api/auth";
@@ -42,12 +44,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // 1. Health & Version Routes (Step 28)
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
+  let dbStatus = "active";
+  try {
+    // Perform a real connection check query
+    await db.execute(sql`SELECT 1`);
+  } catch (error: any) {
+    dbStatus = `error: ${error.message}`;
+  }
+
   res.json({
-    status: "ok",
+    status: dbStatus.startsWith("error") ? "degraded" : "ok",
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV || "development",
-    dbConnection: "active"
+    env: process.env.NODE_ENV || "production",
+    dbConnection: dbStatus
   });
 });
 

@@ -9,6 +9,8 @@ const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const path_1 = __importDefault(require("path"));
+const db_1 = require("./db");
+const drizzle_orm_1 = require("drizzle-orm");
 // Route imports
 const auth_1 = __importDefault(require("./api/auth"));
 const customers_1 = __importDefault(require("./api/customers"));
@@ -42,12 +44,20 @@ app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cookie_parser_1.default)());
 // 1. Health & Version Routes (Step 28)
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
+    let dbStatus = "active";
+    try {
+        // Perform a real connection check query
+        await db_1.db.execute((0, drizzle_orm_1.sql) `SELECT 1`);
+    }
+    catch (error) {
+        dbStatus = `error: ${error.message}`;
+    }
     res.json({
-        status: "ok",
+        status: dbStatus.startsWith("error") ? "degraded" : "ok",
         timestamp: new Date().toISOString(),
-        env: process.env.NODE_ENV || "development",
-        dbConnection: "active"
+        env: process.env.NODE_ENV || "production",
+        dbConnection: dbStatus
     });
 });
 app.get("/version", (req, res) => {
