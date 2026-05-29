@@ -31,7 +31,14 @@ const CustomerAppLayout: React.FC = () => {
 };
 
 export const App: React.FC = () => {
-  const basename = import.meta.env.DEV ? "" : "/test/rewards10";
+  const getDynamicBasename = () => {
+    const path = window.location.pathname;
+    if (path.includes("/test/rewards10")) {
+      return "/test/rewards10";
+    }
+    return "";
+  };
+  const basename = getDynamicBasename();
 
   return (
     <AuthProvider>
