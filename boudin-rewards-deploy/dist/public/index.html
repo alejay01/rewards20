@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2E3033" />
+    <meta name="description" content="Simmer and earn! Join Boudin Boss Rewards by The Boudin Company in Rosenberg, Texas." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <title>Boudin Boss Rewards - The Boudin Company</title>
+    <script type="module" crossorigin src="./assets/index-DnBh_WIi.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B7qZK7Ev.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("service-worker.js")
+            .then(reg => console.log("PWA Service Worker registered:", reg.scope))
+            .catch(err => console.error("PWA Service Worker registration failed:", err));
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -141,6 +141,7 @@ router.get("/customers", authenticateToken, async (req, res, next) => {
       pointsBalance: loyaltyAccounts.pointsBalance,
       totalVisits: loyaltyAccounts.totalVisits,
       rewardsNumber: loyaltyAccounts.rewardsNumber,
+      publicQrToken: loyaltyAccounts.publicQrToken,
       tierName: tiers.name
     })
     .from(customers)

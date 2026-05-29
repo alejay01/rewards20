@@ -114,7 +114,6 @@ router.get("/customers", auth_1.authenticateToken, async (req, res, next) => {
             pointsBalance: schema_1.loyaltyAccounts.pointsBalance,
             totalVisits: schema_1.loyaltyAccounts.totalVisits,
             rewardsNumber: schema_1.loyaltyAccounts.rewardsNumber,
-            publicQrToken: schema_1.loyaltyAccounts.publicQrToken,
             tierName: schema_1.tiers.name
         })
             .from(schema_1.customers)
