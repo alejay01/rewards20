@@ -680,6 +680,11 @@ export const AdminPage: React.FC = () => {
     setSecuritySettings(prev => prev.map(s => s.key === key ? { ...s, value } : s));
   };
 
+  const safeGetSetting = (key: string) => {
+    if (!Array.isArray(securitySettings)) return undefined;
+    return securitySettings.find(s => s.key === key);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-brand-charcoal text-white flex flex-col items-center justify-center font-sans">
@@ -1852,11 +1857,11 @@ export const AdminPage: React.FC = () => {
 
           {/* TAB 6.7: PWA MARKETING AND CAMPAIGNS CONFIG */}
           {activeSubTab === "pwa" && (
-            <div className="space-y-6 max-w-xl mx-auto">
+            <div className="space-y-6 max-w-5xl mx-auto">
               <div>
-                <h3 className="text-lg font-black tracking-tight">PWA Customer Specials settings</h3>
-                <p className="text-xs text-gray-400 mt-1">
-                  Configure proximity specials alerts to automatically pop up on customer devices when they enter the neighborhood near your Rosenberg store.
+                <h3 className="text-lg font-black tracking-tight text-brand-charcoal">PWA Customer Access Portal & Specials Settings</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Configure starting reward statuses and manage the specials broadcast message displayed on the customer-facing loyalty portal in real-time.
                 </p>
               </div>
 
@@ -1870,76 +1875,233 @@ export const AdminPage: React.FC = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSaveSecuritySettings} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-md space-y-6">
-                <div className="flex justify-between items-center border-b pb-3">
-                  <h4 className="font-extrabold text-xs text-brand-charcoal uppercase tracking-wider">PWA proximity Specials Alerts</h4>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer select-none">
-                    <input 
-                      type="checkbox"
-                      checked={securitySettings.find(s => s.key === "pwa_marketing_enabled")?.value === "true"}
-                      onChange={(e) => updateSettingStateValue("pwa_marketing_enabled", e.target.checked ? "true" : "false")}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                    <span className="ml-2 text-xs font-extrabold uppercase text-gray-500">
-                      {securitySettings.find(s => s.key === "pwa_marketing_enabled")?.value === "true" ? "ON" : "OFF"}
-                    </span>
-                  </label>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                
+                {/* LEFT COLUMN: SETTINGS CONTROLS FORM */}
+                <div className="space-y-6">
+                  <form onSubmit={handleSaveSecuritySettings} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
+                    <div className="flex justify-between items-center border-b pb-3">
+                      <h4 className="font-extrabold text-xs text-brand-charcoal uppercase tracking-wider">PWA Proximity Specials</h4>
+                      
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input 
+                          type="checkbox"
+                          checked={safeGetSetting("pwa_marketing_enabled")?.value === "true"}
+                          onChange={(e) => updateSettingStateValue("pwa_marketing_enabled", e.target.checked ? "true" : "false")}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        <span className="ml-2 text-xs font-extrabold uppercase text-gray-500">
+                          {safeGetSetting("pwa_marketing_enabled")?.value === "true" ? "ON" : "OFF"}
+                        </span>
+                      </label>
+                    </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs font-extrabold text-brand-charcoal">
-                    <span>Geofence Alert Radius</span>
-                    <span className="bg-brand-red/10 text-brand-red px-2 py-0.5 rounded border border-brand-red/25 font-black font-mono">
-                      {securitySettings.find(s => s.key === "pwa_marketing_radius")?.value || "1.5"} Miles
-                    </span>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs font-extrabold text-brand-charcoal">
+                        <span>Geofence Alert Radius</span>
+                        <span className="bg-brand-red/10 text-brand-red px-2 py-0.5 rounded border border-brand-red/25 font-black font-mono">
+                          {safeGetSetting("pwa_marketing_radius")?.value || "1.5"} Miles
+                        </span>
+                      </div>
+                      
+                      <input 
+                        type="range"
+                        min="1.0"
+                        max="2.5"
+                        step="0.1"
+                        value={safeGetSetting("pwa_marketing_radius")?.value || "1.5"}
+                        onChange={(e) => updateSettingStateValue("pwa_marketing_radius", e.target.value)}
+                        className="w-full accent-brand-red h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+                      />
+                      <p className="text-[9px] text-gray-400 leading-snug">
+                        Triggers a geofenced Cajun Specials popup alert once a day on customer devices when they load their dashboard within this store radius.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-extrabold text-brand-charcoal uppercase">Custom Specials Broadcast Message</label>
+                      <textarea
+                        rows={4}
+                        maxLength={200}
+                        value={safeGetSetting("pwa_marketing_alert_message")?.value || ""}
+                        onChange={(e) => updateSettingStateValue("pwa_marketing_alert_message", e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-150 rounded-2xl py-3 px-4 text-xs font-bold focus:outline-none focus:border-brand-red text-brand-charcoal leading-relaxed shadow-inner"
+                        placeholder="Enter the push notification message..."
+                        required
+                      />
+                      <div className="flex justify-between text-[9px] text-gray-400 font-bold">
+                        <span>Cajun Marketing Broadcast Message</span>
+                        <span>{200 - (safeGetSetting("pwa_marketing_alert_message")?.value || "").length} chars left</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={saveSettingsLoading}
+                      className="w-full gradient-red hover:opacity-95 text-white font-extrabold py-3 px-6 rounded-2xl shadow-lg shadow-brand-red/20 btn-animate text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
+                    >
+                      {saveSettingsLoading ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Zap className="w-3.5 h-3.5 fill-white/10" />
+                      )}
+                      <span>{saveSettingsLoading ? "Saving Broadcast Settings..." : "Save Specials Broadcast"}</span>
+                    </button>
+                  </form>
+
+                  {/* CUSTOMER PORTAL CONFIG RULES CARD */}
+                  <div className="bg-brand-charcoal text-white rounded-3xl p-5 border border-brand-red/25 shadow-md space-y-3">
+                    <h4 className="font-extrabold text-xs text-brand-red uppercase tracking-wider flex items-center gap-1.5">
+                      <Flame className="w-4 h-4 text-brand-red fill-brand-red" />
+                      <span>Seeded Signup Access Rules</span>
+                    </h4>
+                    <p className="text-[10px] text-gray-300 leading-normal">
+                      The user access portal displays their current status based on active store rules:
+                    </p>
+                    <ul className="text-[9px] space-y-2 text-gray-400 font-medium pl-1">
+                      <li className="flex items-start gap-1.5">
+                        <span className="text-brand-red">🔥</span>
+                        <span><strong>Starting Gift Balance:</strong> New guests automatically credit <strong>150 PTS</strong> to redeem their Free Boudin Ball.</span>
+                      </li>
+                      <li className="flex items-start gap-1.5">
+                        <span className="text-brand-red">🔥</span>
+                        <span><strong>Starting Tier Status:</strong> Set automatically to <strong>Rookie Roller</strong> with 0 initial visits check-ins.</span>
+                      </li>
+                      <li className="flex items-start gap-1.5">
+                        <span className="text-brand-red">🔥</span>
+                        <span><strong>Double Points Campaigns:</strong> Dynamic 2X markers automatically apply to linked specials on their portal.</span>
+                      </li>
+                    </ul>
                   </div>
-                  
-                  <input 
-                    type="range"
-                    min="1.0"
-                    max="2.5"
-                    step="0.1"
-                    value={securitySettings.find(s => s.key === "pwa_marketing_radius")?.value || "1.5"}
-                    onChange={(e) => updateSettingStateValue("pwa_marketing_radius", e.target.value)}
-                    className="w-full accent-brand-red h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <p className="text-[9px] text-gray-400 leading-snug">
-                    Triggers a PWA Cajun Special popup alert once a day to any registered customer device that fetches coordinates within this radius of the shop location.
-                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-extrabold text-brand-charcoal uppercase">Custom Specials Push Message</label>
-                  <textarea
-                    rows={4}
-                    maxLength={200}
-                    value={securitySettings.find(s => s.key === "pwa_marketing_alert_message")?.value || ""}
-                    onChange={(e) => updateSettingStateValue("pwa_marketing_alert_message", e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-150 rounded-2xl py-3 px-4 text-xs font-bold focus:outline-none focus:border-brand-red text-brand-charcoal leading-relaxed shadow-inner"
-                    placeholder="Enter the push notification message..."
-                    required
-                  />
-                  <div className="flex justify-between text-[9px] text-gray-400 font-bold">
-                    <span>Cajun Marketing Broadcast Message</span>
-                    <span>{200 - (securitySettings.find(s => s.key === "pwa_marketing_alert_message")?.value || "").length} chars left</span>
+                {/* RIGHT COLUMN: LIVE CUSTOMER ACCESS PORTAL PREVIEW */}
+                <div className="space-y-4 flex flex-col items-center">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                    <span>📱</span> Real-Time Customer Portal Preview (New Signup Status)
+                  </span>
+                  
+                  {/* PHONE FRAME MOCKUP */}
+                  <div className="w-[305px] h-[550px] bg-brand-light rounded-[36px] border-[10px] border-brand-charcoal shadow-2xl relative overflow-hidden flex flex-col font-sans shrink-0 border-solid">
+                    
+                    {/* Simulated Notch */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-3.5 bg-brand-charcoal rounded-b-xl z-50"></div>
+                    
+                    {/* Simulated App Header */}
+                    <header className="bg-brand-charcoal text-white pt-6 pb-2.5 px-4 flex justify-between items-center shadow-md relative z-10 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <Flame className="w-4 h-4 text-brand-red fill-brand-red" />
+                        <span className="font-extrabold text-xs tracking-wider uppercase text-white">
+                          Boudin <span className="text-brand-red">Boss</span>
+                        </span>
+                      </div>
+                      <div className="bg-brand-red/10 border border-brand-red/30 px-2 py-0.5 rounded-full text-[9px] font-black text-brand-red flex items-center gap-0.5 border-solid">
+                        <Zap className="w-2.5 h-2.5 fill-brand-red" />
+                        <span>150 PTS</span>
+                      </div>
+                    </header>
+
+                    {/* Scrollable Phone Body */}
+                    <div className="flex-1 overflow-y-auto p-3.5 space-y-4 relative z-0 text-left">
+                      
+                      {/* Greeting Hero Card */}
+                      <div className="bg-gradient-to-r from-red-800 to-red-950 text-white rounded-2xl p-4 shadow-md relative overflow-hidden space-y-3">
+                        <div className="absolute -top-3 -right-3 p-4 opacity-5">
+                          <Flame className="w-20 h-20 text-brand-red fill-brand-red" />
+                        </div>
+                        
+                        <div className="space-y-2 relative z-10">
+                          <div>
+                            <p className="text-brand-red font-bold text-[8px] uppercase tracking-wider">Cajun Loyalty Club</p>
+                            <h2 className="text-xs font-extrabold leading-tight">Bonjour, Welcome back!</h2>
+                            <p className="text-[9px] text-gray-300 font-medium">Boudreaux Thibodeaux</p>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <div className="bg-white/10 border border-white/5 rounded-xl p-1.5 flex-1 flex flex-col items-center border-solid">
+                              <span className="text-[7px] text-gray-300 font-bold uppercase tracking-wider">Points</span>
+                              <span className="text-xs font-black text-white flex items-center gap-0.5 mt-0.5">
+                                <Zap className="w-3 h-3 text-brand-red fill-brand-red" />
+                                150
+                              </span>
+                            </div>
+                            <div className="bg-white/10 border border-white/5 rounded-xl p-1.5 flex-1 flex flex-col items-center border-solid">
+                              <span className="text-[7px] text-gray-300 font-bold uppercase tracking-wider">Visits</span>
+                              <span className="text-xs font-black text-white flex items-center gap-0.5 mt-0.5">
+                                <Award className="w-3 h-3 text-brand-gold fill-brand-gold" />
+                                0
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="w-full bg-brand-red text-center text-[9px] font-black py-1.5 rounded-lg uppercase tracking-wider opacity-90 shadow-sm flex items-center justify-center gap-1 cursor-pointer">
+                            <span>🎫 Show My QR Code</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Tier Crowns Status Card */}
+                      <div className="bg-white border border-gray-100 rounded-2xl p-3.5 shadow-sm space-y-2.5 border-solid">
+                        <div className="flex gap-2.5 items-center">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-red-600 to-red-800 flex items-center justify-center text-lg shadow">
+                            👑
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-extrabold text-[11px] tracking-tight text-brand-charcoal">Rookie Roller</span>
+                              <span className="text-[7px] font-black bg-brand-gold/10 text-brand-gold border border-brand-gold/20 px-1 rounded border-solid">NEW</span>
+                            </div>
+                            <p className="text-[8px] text-gray-400 leading-tight">Welcome to the Bayou! Start earning free links basket.</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[8px] font-black uppercase text-gray-400 tracking-wider">
+                            <span>Next: Bayou Buddy</span>
+                            <span>0 / 10 Visits</span>
+                          </div>
+                          
+                          <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                            <div className="bg-brand-red h-full rounded-full w-0"></div>
+                          </div>
+                          <p className="text-[8px] text-gray-400 leading-tight font-medium">
+                            “Just 10 more visits to unlock Bayou Buddy!”
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Live specials Campaign Card */}
+                      <div className="space-y-2">
+                        <p className="text-[8px] font-extrabold text-gray-400 uppercase tracking-widest pl-1">Live Specials Broadcast</p>
+                        
+                        <div className="bg-brand-charcoal text-white rounded-2xl p-3.5 shadow-md relative overflow-hidden border border-white/5 border-solid">
+                          <div className="absolute top-2 right-2 bg-brand-red text-white text-[7px] font-black uppercase py-0.5 px-1.5 rounded-full flex items-center gap-0.5 shadow">
+                            <Zap className="w-2 h-2 fill-white animate-pulse" />
+                            <span>2X POINTS</span>
+                          </div>
+                          
+                          <div className="space-y-1.5 relative z-10 pr-10">
+                            <h4 className="font-black text-[10px] leading-tight text-white uppercase tracking-wider flex items-center gap-1">
+                              <Flame className="w-3 h-3 text-brand-red fill-brand-red" />
+                              <span>Smokehouse Special</span>
+                            </h4>
+                            <p className="text-[8px] text-gray-300 leading-normal font-medium">
+                              {safeGetSetting("pwa_marketing_alert_message")?.value || "Configure your welcome specials message on the left to see it broadcasted here in real-time!"}
+                            </p>
+                            <div className="flex items-center gap-1 text-[7px] text-brand-red font-extrabold pt-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-brand-red animate-ping"></span>
+                              <span>Broadcast Active Today</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={saveSettingsLoading}
-                  className="w-full gradient-red hover:opacity-95 text-white font-extrabold py-3 px-6 rounded-2xl shadow-lg shadow-brand-red/20 btn-animate text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
-                >
-                  {saveSettingsLoading ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-3.5 h-3.5 fill-white/10" />
-                  )}
-                  <span>{saveSettingsLoading ? "Saving Specials broadcast..." : "Broadcast Specials Notification"}</span>
-                </button>
-              </form>
+              </div>
             </div>
           )}
 
