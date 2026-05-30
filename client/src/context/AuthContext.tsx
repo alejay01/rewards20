@@ -29,6 +29,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Synchronize token state on startup
   useEffect(() => {
     const initAuth = async () => {
+      // Apply any saved tokens in localStorage to axios headers immediately on startup
+      const staffToken = localStorage.getItem("staffToken");
+      const customerToken = localStorage.getItem("customerToken");
+      if (staffToken) {
+        axios.defaults.headers.common["Authorization"] = `Bearer ${staffToken}`;
+      } else if (customerToken) {
+        axios.defaults.headers.common["Authorization"] = `Bearer ${customerToken}`;
+      }
+
       try {
         // 1. Try to fetch staff user details
         const staffRes = await axios.get("/api/auth/me");
@@ -120,16 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return meRes.data;
   };
 
-  // On mount, apply any saved tokens in localStorage to axios headers
-  useEffect(() => {
-    const staffToken = localStorage.getItem("staffToken");
-    const customerToken = localStorage.getItem("customerToken");
-    if (staffToken) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${staffToken}`;
-    } else if (customerToken) {
-      axios.defaults.headers.common["Authorization"] = `Bearer ${customerToken}`;
-    }
-  }, []);
+
 
   return (
     <AuthContext.Provider
