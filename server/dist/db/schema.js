@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.rewardRedemptionsRelations = exports.purchasesRelations = exports.visitsRelations = exports.loyaltyAccountRelations = exports.customerRelations = exports.rolePermissionsRelations = exports.staffUsersRelations = exports.settings = exports.tabletSessions = exports.auditLogs = exports.integrationLogs = exports.loyverseReceipts = exports.loyverseCustomers = exports.receiptClaims = exports.qrTokens = exports.promotions = exports.rewardRedemptions = exports.rewards = exports.pointsLedger = exports.purchases = exports.visits = exports.tiers = exports.loyaltyAccounts = exports.customers = exports.staffUsers = exports.rolePermissions = exports.permissions = exports.roles = void 0;
+exports.authorizedDevicesRelations = exports.authorizedDevices = exports.rewardRedemptionsRelations = exports.purchasesRelations = exports.visitsRelations = exports.loyaltyAccountRelations = exports.customerRelations = exports.rolePermissionsRelations = exports.staffUsersRelations = exports.settings = exports.tabletSessions = exports.auditLogs = exports.integrationLogs = exports.loyverseReceipts = exports.loyverseCustomers = exports.receiptClaims = exports.qrTokens = exports.promotions = exports.rewardRedemptions = exports.rewards = exports.pointsLedger = exports.purchases = exports.visits = exports.tiers = exports.loyaltyAccounts = exports.customers = exports.staffUsers = exports.rolePermissions = exports.permissions = exports.roles = void 0;
 const mysql_core_1 = require("drizzle-orm/mysql-core");
 const drizzle_orm_1 = require("drizzle-orm");
 // 1. Roles Table
@@ -406,6 +406,35 @@ exports.rewardRedemptionsRelations = (0, drizzle_orm_1.relations)(exports.reward
     }),
     approvedBy: one(exports.staffUsers, {
         fields: [exports.rewardRedemptions.managerApprovedBy],
+        references: [exports.staffUsers.id]
+    })
+}));
+// 22. Authorized Devices Table
+exports.authorizedDevices = (0, mysql_core_1.mysqlTable)("authorized_devices", {
+    id: (0, mysql_core_1.int)("id").autoincrement().primaryKey(),
+    deviceName: (0, mysql_core_1.varchar)("device_name", { length: 100 }).notNull(),
+    deviceFingerprint: (0, mysql_core_1.varchar)("device_fingerprint", { length: 100 }).notNull().unique(),
+    status: (0, mysql_core_1.varchar)("status", { length: 20 }).default("pending").notNull(), // 'pending', 'approved', 'rejected'
+    deviceType: (0, mysql_core_1.varchar)("device_type", { length: 50 }),
+    operatingSystem: (0, mysql_core_1.varchar)("operating_system", { length: 50 }),
+    browserName: (0, mysql_core_1.varchar)("browser_name", { length: 50 }),
+    latitude: (0, mysql_core_1.decimal)("latitude", { precision: 10, scale: 8 }),
+    longitude: (0, mysql_core_1.decimal)("longitude", { precision: 11, scale: 8 }),
+    lastIp: (0, mysql_core_1.varchar)("last_ip", { length: 45 }),
+    userAgent: (0, mysql_core_1.varchar)("user_agent", { length: 255 }),
+    allowRemote: (0, mysql_core_1.boolean)("allow_remote").default(false).notNull(),
+    approvedBy: (0, mysql_core_1.int)("approved_by"),
+    approvedAt: (0, mysql_core_1.timestamp)("approved_at"),
+    createdAt: (0, mysql_core_1.timestamp)("created_at").defaultNow(),
+    updatedAt: (0, mysql_core_1.timestamp)("updated_at").defaultNow().onUpdateNow()
+}, (table) => {
+    return {
+        fingerprintIdx: (0, mysql_core_1.uniqueIndex)("device_fingerprint_idx").on(table.deviceFingerprint)
+    };
+});
+exports.authorizedDevicesRelations = (0, drizzle_orm_1.relations)(exports.authorizedDevices, ({ one }) => ({
+    approvedByUser: one(exports.staffUsers, {
+        fields: [exports.authorizedDevices.approvedBy],
         references: [exports.staffUsers.id]
     })
 }));

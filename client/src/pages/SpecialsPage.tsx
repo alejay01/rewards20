@@ -81,7 +81,7 @@ export const SpecialsPage: React.FC = () => {
           Social Promotion Integrations
         </h3>
         
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Facebook Messenger */}
           <div className="bg-white border border-gray-100 rounded-2xl p-4 text-center opacity-65 flex flex-col justify-between items-center shadow-sm">
             <div className="p-2.5 bg-blue-50 rounded-xl text-blue-500 mb-2">

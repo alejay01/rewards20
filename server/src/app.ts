@@ -15,6 +15,7 @@ import receiptsRouter from "./api/receipts";
 import qrRouter from "./api/qr";
 
 import { errorHandler } from "./middleware/errorHandler";
+import { validateSecurityAccess } from "./middleware/auth";
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(validateSecurityAccess);
 
 // 1. Health & Version Routes (Step 28)
 app.get("/health", async (req, res) => {

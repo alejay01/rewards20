@@ -10,15 +10,17 @@ import canvasConfetti from "canvas-confetti";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
 export const TabletPage: React.FC = () => {
-  const { staffUser, logoutStaff, apiClient } = useAuth();
+  const { staffUser, logoutStaff, apiClient, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Authentication gate
   useEffect(() => {
+    if (authLoading) return;
+
     if (!staffUser) {
       navigate("/staff/login");
     }
-  }, [staffUser, navigate]);
+  }, [staffUser, authLoading, navigate]);
 
   // Main UI states
   const [activeTab, setActiveTab] = useState<"scan" | "search" | "customer" | "activity">("scan");
@@ -65,7 +67,13 @@ export const TabletPage: React.FC = () => {
     if (showScanner) {
       scanner = new Html5QrcodeScanner(
         "qr-reader-container",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        { 
+          fps: 10, 
+          qrbox: (width, height) => {
+            const size = Math.floor(Math.min(width, height) * 0.75);
+            return { width: size, height: size };
+          }
+        },
         false
       );
 
@@ -272,6 +280,15 @@ export const TabletPage: React.FC = () => {
     navigate("/staff/login");
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-brand-charcoal text-white flex flex-col items-center justify-center font-sans">
+        <RefreshCw className="w-10 h-10 text-brand-red animate-spin" />
+        <p className="text-xs font-bold text-gray-400 mt-3 uppercase tracking-wider">Verifying Cashier Session...</p>
+      </div>
+    );
+  }
+
   if (!staffUser) return null;
 
   return (
@@ -376,11 +393,11 @@ export const TabletPage: React.FC = () => {
 
           {/* TAB 1: SCAN CUSTOMER */}
           {activeTab === "scan" && (
-            <div className="max-w-md mx-auto text-center space-y-6 py-10">
+            <div className="max-w-3xl mx-auto text-center space-y-6 py-6">
               <div className="space-y-2">
-                <Scan className="w-14 h-14 mx-auto text-brand-red" />
+                <Scan className="w-14 h-14 mx-auto text-brand-red animate-pulse" />
                 <h3 className="text-xl font-black tracking-tight">Scan Customer QR Code</h3>
-                <p className="text-xs text-gray-400 max-w-xs mx-auto leading-normal">
+                <p className="text-xs text-gray-400 max-w-sm mx-auto leading-normal">
                   Use the iPad/tablet camera or type a demo check-in token to pull up the customer's rewards profile immediately.
                 </p>
               </div>
@@ -393,15 +410,17 @@ export const TabletPage: React.FC = () => {
                   Turn On Tablet Camera
                 </button>
               ) : (
-                <div className="bg-white text-black p-4 rounded-3xl max-w-xs mx-auto shadow-2xl relative">
+                <div className="bg-white text-black p-6 rounded-3xl w-11/12 md:w-[75vw] lg:w-[70vw] max-w-4xl mx-auto shadow-2xl relative border-4 border-brand-red/35">
                   <button 
                     onClick={() => setShowScanner(false)}
-                    className="absolute top-2 right-2 text-gray-400 hover:text-black p-1"
+                    className="absolute top-2 right-2 text-gray-400 hover:text-black p-1 bg-gray-100 rounded-full"
                   >
                     <X className="w-5 h-5" />
                   </button>
-                  <div id="qr-reader-container" className="w-full rounded-2xl overflow-hidden border"></div>
-                  <span className="text-[10px] font-bold text-gray-500 block mt-2">Hold customer phone QR up to the lens</span>
+                  <div id="qr-reader-container" className="w-full rounded-2xl overflow-hidden border-2 border-gray-100"></div>
+                  <span className="text-[10px] font-black text-gray-500 block mt-3 uppercase tracking-wider">
+                    Hold customer phone QR up to the lens (75% Active Target Area)
+                  </span>
                 </div>
               )}
 

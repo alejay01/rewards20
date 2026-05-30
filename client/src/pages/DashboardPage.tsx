@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Zap, Award, Flame, Calendar, Clock, Sparkles, ChevronRight, QrCode } from "lucide-react";
+import { Zap, Award, Flame, Calendar, Clock, Sparkles, ChevronRight, QrCode, RefreshCw } from "lucide-react";
 import canvasConfetti from "canvas-confetti";
 
 export const DashboardPage: React.FC = () => {
-  const { customerUser, refreshCustomer } = useAuth();
+  const { customerUser, refreshCustomer, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!customerUser) {
       navigate("/join");
       return;
@@ -51,6 +53,15 @@ export const DashboardPage: React.FC = () => {
       });
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="max-w-md mx-auto min-h-[calc(100vh-100px)] flex flex-col items-center justify-center bg-brand-light">
+        <RefreshCw className="w-8 h-8 text-brand-red animate-spin" />
+        <span className="text-xs text-gray-500 mt-2 font-medium">Verifying rewards membership...</span>
+      </div>
+    );
+  }
 
   if (!customerUser) return null;
 

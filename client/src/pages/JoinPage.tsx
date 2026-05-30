@@ -112,7 +112,7 @@ export const JoinPage: React.FC = () => {
       {!isLoginMode ? (
         // 1. JOIN CLUB FORM
         <form onSubmit={handleJoin} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-extrabold text-gray-500 uppercase mb-1">First Name *</label>
               <div className="relative">
@@ -170,7 +170,7 @@ export const JoinPage: React.FC = () => {
             <p className="text-[9px] text-gray-400 mt-0.5">Used strictly for cashier counter lookups. We never send SMS.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-extrabold text-gray-500 uppercase mb-1">Birthday (Optional)</label>
               <div className="relative">

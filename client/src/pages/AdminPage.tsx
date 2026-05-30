@@ -9,11 +9,13 @@ import {
 import axios from "axios";
 
 export const AdminPage: React.FC = () => {
-  const { staffUser, logoutStaff, apiClient } = useAuth();
+  const { staffUser, logoutStaff, apiClient, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Authentication check
   useEffect(() => {
+    if (authLoading) return;
+
     if (!staffUser) {
       navigate("/staff/login");
     } else if (staffUser.role !== "Administrator" && staffUser.role !== "Manager") {
@@ -21,13 +23,21 @@ export const AdminPage: React.FC = () => {
     } else if (staffUser.authMethod === "pin") {
       navigate("/tablet"); // Enforce password-only auth for sensitive admin dashboard
     }
-  }, [staffUser, navigate]);
+  }, [staffUser, authLoading, navigate]);
 
   // States
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "customers" | "rewards" | "promotions" | "claims" | "loyverse" | "audits" | "staff">("overview");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "customers" | "rewards" | "promotions" | "claims" | "loyverse" | "security" | "pwa" | "audits" | "staff">("overview");
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<any>(null);
   
+  // New whitelisting and settings states
+  const [pendingDevicesCount, setPendingDevicesCount] = useState(0);
+  const [pendingDevicesList, setPendingDevicesList] = useState<any[]>([]);
+  const [devicesList, setDevicesList] = useState<any[]>([]);
+  const [securitySettings, setSecuritySettings] = useState<any[]>([]);
+  const [saveSettingsLoading, setSaveSettingsLoading] = useState(false);
+  const [saveSettingsMessage, setSaveSettingsMessage] = useState<string | null>(null);
+
   // Lists
   const [customerList, setCustomerList] = useState<any[]>([]);
   const [rewardsList, setRewardsList] = useState<any[]>([]);
@@ -132,9 +142,21 @@ export const AdminPage: React.FC = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
+  const checkPendingDevices = async () => {
+    try {
+      const res = await apiClient.get("/api/admin/devices");
+      const pending = res.data.filter((d: any) => d.status === "pending");
+      setPendingDevicesCount(pending.length);
+      setPendingDevicesList(pending);
+    } catch (e) {
+      // silent
+    }
+  };
+
   useEffect(() => {
     if (staffUser) {
       loadOverviewMetrics();
+      checkPendingDevices();
     }
   }, [staffUser, activeSubTab]);
 
@@ -159,6 +181,14 @@ export const AdminPage: React.FC = () => {
       } else if (activeSubTab === "loyverse") {
         const res = await apiClient.get("/api/admin/integrations/loyverse/status");
         setLoyverseStatus(res.data);
+      } else if (activeSubTab === "security") {
+        const dRes = await apiClient.get("/api/admin/devices");
+        setDevicesList(dRes.data);
+        const sRes = await apiClient.get("/api/admin/security-settings");
+        setSecuritySettings(sRes.data);
+      } else if (activeSubTab === "pwa") {
+        const sRes = await apiClient.get("/api/admin/security-settings");
+        setSecuritySettings(sRes.data);
       } else if (activeSubTab === "audits") {
         const res = await apiClient.get("/api/admin/audit-logs");
         setAuditLogsList(res.data);
@@ -595,6 +625,70 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // Device whitelisting and settings handlers
+  const handleApproveDevice = async (deviceId: number) => {
+    try {
+      const res = await apiClient.post("/api/admin/devices/approve", { deviceId });
+      alert(res.data.message || "Device approved!");
+      loadOverviewMetrics();
+      checkPendingDevices();
+    } catch (err: any) {
+      alert("Error approving device: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleRejectDevice = async (deviceId: number) => {
+    if (!confirm("Are you sure you want to block/reject this device?")) return;
+    try {
+      const res = await apiClient.post("/api/admin/devices/reject", { deviceId });
+      alert(res.data.message || "Device rejected!");
+      loadOverviewMetrics();
+      checkPendingDevices();
+    } catch (err: any) {
+      alert("Error rejecting device: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleToggleRemote = async (deviceId: number) => {
+    try {
+      const res = await apiClient.post("/api/admin/devices/toggle-remote", { deviceId });
+      loadOverviewMetrics();
+    } catch (err: any) {
+      alert("Error toggling remote access: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const handleSaveSecuritySettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaveSettingsLoading(true);
+    setSaveSettingsMessage(null);
+    try {
+      const payload = securitySettings.map(s => ({ key: s.key, value: s.value }));
+      const res = await apiClient.post("/api/admin/security-settings", payload);
+      setSaveSettingsMessage(res.data.message || "Settings saved!");
+      const updated = await apiClient.get("/api/admin/security-settings");
+      setSecuritySettings(updated.data);
+      setTimeout(() => setSaveSettingsMessage(null), 3000);
+    } catch (err: any) {
+      setSaveSettingsMessage("Error saving settings: " + (err.response?.data?.error || err.message));
+    } finally {
+      setSaveSettingsLoading(false);
+    }
+  };
+
+  const updateSettingStateValue = (key: string, value: string) => {
+    setSecuritySettings(prev => prev.map(s => s.key === key ? { ...s, value } : s));
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-brand-charcoal text-white flex flex-col items-center justify-center font-sans">
+        <RefreshCw className="w-10 h-10 text-brand-red animate-spin" />
+        <p className="text-xs font-bold text-gray-400 mt-3 uppercase tracking-wider">Securing Cajun Portals...</p>
+      </div>
+    );
+  }
+
   if (!staffUser) return null;
 
   return (
@@ -639,7 +733,9 @@ export const AdminPage: React.FC = () => {
             { id: "promotions", label: "Specials/Promos", icon: <Flame className="w-4 h-4" /> },
             { id: "claims", label: "Receipt Claims", icon: <FileText className="w-4 h-4" /> },
             { id: "loyverse", label: "Loyverse Sync", icon: <Settings className="w-4 h-4" /> },
-            { id: "audits", label: "System Audits", icon: <ShieldAlert className="w-4 h-4" /> },
+            { id: "security", label: "Security Access", icon: <ShieldAlert className="w-4 h-4" /> },
+            { id: "pwa", label: "PWA Settings", icon: <Settings className="w-4 h-4" /> },
+            { id: "audits", label: "System Audits", icon: <FileText className="w-4 h-4" /> },
             { id: "staff", label: "Staff Access", icon: <Key className="w-4 h-4" /> }
           ].map(tab => (
             <button
@@ -660,7 +756,26 @@ export const AdminPage: React.FC = () => {
         {/* Content body */}
         <main className="flex-1 p-8 overflow-y-auto">
           
-          {/* TAB 1: OVERVIEW METRICS */}
+          {/* Security Alert Banner */}
+          {pendingDevicesCount > 0 && (
+            <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl p-4 mb-6 shadow-md border-b-2 border-red-800 flex justify-between items-center relative overflow-hidden animate-pulse">
+              <div className="flex items-center gap-3 relative z-10">
+                <ShieldAlert className="w-6 h-6 text-white animate-bounce shrink-0" />
+                <div>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">⚠️ Security Alert! Unrecognized Devices Detected</h4>
+                  <p className="text-[10px] text-red-100 font-bold mt-0.5 leading-snug">
+                    {pendingDevicesCount} Non-Boudin Company devices have attempted to access the cashier portals. Please audit and approve them immediately.
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setActiveSubTab("security"); }}
+                className="bg-white text-red-600 font-black text-[10px] uppercase px-4 py-2 rounded-xl hover:bg-gray-100 transition-all active:scale-95 shadow relative z-10"
+              >
+                Authorize Devices
+              </button>
+            </div>
+          )}
           {activeSubTab === "overview" && metrics && (
             <div className="space-y-8">
               
@@ -1523,6 +1638,309 @@ export const AdminPage: React.FC = () => {
               </div>
             );
           })()}
+
+          {/* TAB 6.5: SECURITY ACCESS MANAGEMENT */}
+          {activeSubTab === "security" && (
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-lg font-black tracking-tight">Security Access Control</h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Enforce hardware device MAC/fingerprint whitelisting, configure remote bypass permissions, and manage geofencing coordinates.
+                </p>
+              </div>
+
+              {saveSettingsMessage && (
+                <div className={`p-4 rounded-2xl text-xs font-bold text-center border ${
+                  saveSettingsMessage.includes("Error") 
+                    ? "bg-red-50 border-red-200 text-brand-red" 
+                    : "bg-emerald-50 border-emerald-200 text-emerald-600 animate-bounce"
+                }`}>
+                  {saveSettingsMessage}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                
+                {/* Geofence & Whitelisting Settings Form */}
+                <form onSubmit={handleSaveSecuritySettings} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4 lg:col-span-1">
+                  <h4 className="font-extrabold text-xs text-brand-charcoal uppercase tracking-wider border-b pb-2">IP & Geofencing Parameters</h4>
+                  
+                  <div>
+                    <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">Store IP Whitelist</label>
+                    <textarea
+                      rows={2}
+                      value={securitySettings.find(s => s.key === "security_ip_whitelist")?.value || ""}
+                      onChange={(e) => updateSettingStateValue("security_ip_whitelist", e.target.value)}
+                      placeholder="e.g. 127.0.0.1, 8.8.8.8"
+                      className="w-full bg-gray-50 border border-gray-150 rounded-xl py-2 px-3 text-xs font-bold font-mono focus:outline-none focus:border-brand-red"
+                    />
+                    <p className="text-[8px] text-gray-400 mt-1">Comma-separated external router IP addresses allowed to bypass geofences.</p>
+                  </div>
+
+                  <div className="pt-2">
+                    <label className="flex items-start gap-2 text-xs text-brand-charcoal font-bold cursor-pointer select-none">
+                      <input 
+                        type="checkbox"
+                        checked={securitySettings.find(s => s.key === "security_geofence_enabled")?.value === "true"}
+                        onChange={(e) => updateSettingStateValue("security_geofence_enabled", e.target.checked ? "true" : "false")}
+                        className="mt-0.5 rounded border-gray-300 text-brand-red focus:ring-brand-red w-3.5 h-3.5"
+                      />
+                      <span>Enable Cashier Geofencing</span>
+                    </label>
+                    <p className="text-[8px] text-gray-400 pl-5.5 mt-0.5">Strictly checks cashier GPS clock-in coordinates against the store location.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">Store Latitude</label>
+                      <input 
+                        type="number"
+                        step="0.0001"
+                        value={securitySettings.find(s => s.key === "security_geofence_lat")?.value || ""}
+                        onChange={(e) => updateSettingStateValue("security_geofence_lat", e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-150 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-brand-red"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">Store Longitude</label>
+                      <input 
+                        type="number"
+                        step="0.0001"
+                        value={securitySettings.find(s => s.key === "security_geofence_lng")?.value || ""}
+                        onChange={(e) => updateSettingStateValue("security_geofence_lng", e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-150 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-brand-red"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">Allowed Radius (Feet)</label>
+                    <input 
+                      type="number"
+                      value={securitySettings.find(s => s.key === "security_geofence_radius")?.value || ""}
+                      onChange={(e) => updateSettingStateValue("security_geofence_radius", e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-150 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-brand-red"
+                    />
+                    <p className="text-[8px] text-gray-400 mt-1">Cashier device must be within this radius to access Counter mode.</p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={saveSettingsLoading}
+                    className="w-full bg-brand-charcoal hover:bg-brand-charcoal/95 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow"
+                  >
+                    {saveSettingsLoading ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                    )}
+                    <span>{saveSettingsLoading ? "Saving Settings..." : "Save Parameters"}</span>
+                  </button>
+                </form>
+
+                {/* Device Whitelisting Inventory */}
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm lg:col-span-2 overflow-hidden space-y-4">
+                  <div className="bg-gray-50/50 p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h4 className="font-extrabold text-xs text-brand-charcoal uppercase tracking-wider">Audited Counter Devices</h4>
+                    <span className="text-[9px] font-black bg-brand-red/10 text-brand-red border border-brand-red/20 px-2 py-0.5 rounded">
+                      {devicesList.length} Profiled
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50/30 border-b border-gray-100 text-[9px] font-extrabold uppercase text-gray-400 tracking-wider">
+                          <th className="py-2.5 px-4">Device & OS</th>
+                          <th className="py-2.5 px-4">Fingerprint MAC</th>
+                          <th className="py-2.5 px-4">Status</th>
+                          <th className="py-2.5 px-4">Last Connection IP</th>
+                          <th className="py-2.5 px-4">GPS Geolocation</th>
+                          <th className="py-2.5 px-4 text-center">Remote Access</th>
+                          <th className="py-2.5 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50 text-[11px] font-medium text-brand-charcoal">
+                        {devicesList.map(dev => (
+                          <tr key={dev.id} className="hover:bg-gray-50/30 transition-all">
+                            <td className="py-3 px-4 font-bold">
+                              <div>
+                                <p className="font-bold text-xs">{dev.deviceName}</p>
+                                <p className="text-[9px] text-gray-400 font-medium">{dev.operatingSystem} • {dev.browserName} • {dev.deviceType}</p>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-[9px] text-gray-400">
+                              {dev.deviceFingerprint.substring(0, 16)}...
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                                dev.status === "approved" 
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-600" 
+                                  : dev.status === "rejected"
+                                    ? "bg-red-50 border-red-200 text-brand-red"
+                                    : "bg-orange-50 border-orange-200 text-orange-600 animate-pulse"
+                              }`}>
+                                {dev.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono text-[9px] text-gray-500">
+                              {dev.lastIp || "N/A"}
+                            </td>
+                            <td className="py-3 px-4">
+                              {dev.latitude && dev.longitude ? (
+                                <a 
+                                  href={`http://maps.google.com/?q=${dev.latitude},${dev.longitude}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-brand-red font-bold hover:underline flex items-center gap-0.5"
+                                >
+                                  📍 Link
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 text-[9px]">No Coordinates</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => handleToggleRemote(dev.id)}
+                                className={`text-[9px] font-extrabold uppercase px-2 py-1 rounded transition-all active:scale-95 ${
+                                  dev.allowRemote 
+                                    ? "bg-emerald-500 text-white hover:bg-emerald-600" 
+                                    : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                                }`}
+                              >
+                                {dev.allowRemote ? "Remote Allowed" : "Local Only"}
+                              </button>
+                            </td>
+                            <td className="py-3 px-4 text-right space-x-1.5 shrink-0">
+                              {dev.status !== "approved" && (
+                                <button
+                                  onClick={() => handleApproveDevice(dev.id)}
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[9px] uppercase px-2 py-1 rounded transition-all active:scale-95 shadow-sm"
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              {dev.status !== "rejected" && (
+                                <button
+                                  onClick={() => handleRejectDevice(dev.id)}
+                                  className="bg-brand-red hover:bg-brand-red/95 text-white font-extrabold text-[9px] uppercase px-2 py-1 rounded transition-all active:scale-95 shadow-sm"
+                                >
+                                  Block
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+
+                        {devicesList.length === 0 && (
+                          <tr>
+                            <td colSpan={7} className="text-center text-gray-400 text-xs py-8">
+                              No hardware devices registered yet. Open counter mode on a tablet to connect.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6.7: PWA MARKETING AND CAMPAIGNS CONFIG */}
+          {activeSubTab === "pwa" && (
+            <div className="space-y-6 max-w-xl mx-auto">
+              <div>
+                <h3 className="text-lg font-black tracking-tight">PWA Customer Specials settings</h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Configure proximity specials alerts to automatically pop up on customer devices when they enter the neighborhood near your Rosenberg store.
+                </p>
+              </div>
+
+              {saveSettingsMessage && (
+                <div className={`p-4 rounded-2xl text-xs font-bold text-center border ${
+                  saveSettingsMessage.includes("Error") 
+                    ? "bg-red-50 border-red-200 text-brand-red" 
+                    : "bg-emerald-50 border-emerald-200 text-emerald-600 animate-bounce"
+                }`}>
+                  {saveSettingsMessage}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveSecuritySettings} className="bg-white rounded-3xl p-6 border border-gray-100 shadow-md space-y-6">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <h4 className="font-extrabold text-xs text-brand-charcoal uppercase tracking-wider">PWA proximity Specials Alerts</h4>
+                  
+                  <label className="relative inline-flex items-center cursor-pointer select-none">
+                    <input 
+                      type="checkbox"
+                      checked={securitySettings.find(s => s.key === "pwa_marketing_enabled")?.value === "true"}
+                      onChange={(e) => updateSettingStateValue("pwa_marketing_enabled", e.target.checked ? "true" : "false")}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                    <span className="ml-2 text-xs font-extrabold uppercase text-gray-500">
+                      {securitySettings.find(s => s.key === "pwa_marketing_enabled")?.value === "true" ? "ON" : "OFF"}
+                    </span>
+                  </label>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-extrabold text-brand-charcoal">
+                    <span>Geofence Alert Radius</span>
+                    <span className="bg-brand-red/10 text-brand-red px-2 py-0.5 rounded border border-brand-red/25 font-black font-mono">
+                      {securitySettings.find(s => s.key === "pwa_marketing_radius")?.value || "1.5"} Miles
+                    </span>
+                  </div>
+                  
+                  <input 
+                    type="range"
+                    min="1.0"
+                    max="2.5"
+                    step="0.1"
+                    value={securitySettings.find(s => s.key === "pwa_marketing_radius")?.value || "1.5"}
+                    onChange={(e) => updateSettingStateValue("pwa_marketing_radius", e.target.value)}
+                    className="w-full accent-brand-red h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <p className="text-[9px] text-gray-400 leading-snug">
+                    Triggers a PWA Cajun Special popup alert once a day to any registered customer device that fetches coordinates within this radius of the shop location.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-extrabold text-brand-charcoal uppercase">Custom Specials Push Message</label>
+                  <textarea
+                    rows={4}
+                    maxLength={200}
+                    value={securitySettings.find(s => s.key === "pwa_marketing_alert_message")?.value || ""}
+                    onChange={(e) => updateSettingStateValue("pwa_marketing_alert_message", e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-150 rounded-2xl py-3 px-4 text-xs font-bold focus:outline-none focus:border-brand-red text-brand-charcoal leading-relaxed shadow-inner"
+                    placeholder="Enter the push notification message..."
+                    required
+                  />
+                  <div className="flex justify-between text-[9px] text-gray-400 font-bold">
+                    <span>Cajun Marketing Broadcast Message</span>
+                    <span>{200 - (securitySettings.find(s => s.key === "pwa_marketing_alert_message")?.value || "").length} chars left</span>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={saveSettingsLoading}
+                  className="w-full gradient-red hover:opacity-95 text-white font-extrabold py-3 px-6 rounded-2xl shadow-lg shadow-brand-red/20 btn-animate text-xs uppercase tracking-wider flex items-center justify-center gap-1.5"
+                >
+                  {saveSettingsLoading ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 fill-white/10" />
+                  )}
+                  <span>{saveSettingsLoading ? "Saving Specials broadcast..." : "Broadcast Specials Notification"}</span>
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* TAB 8: STAFF ACCESS MANAGEMENT */}
           {activeSubTab === "staff" && (

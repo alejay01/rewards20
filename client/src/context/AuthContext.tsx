@@ -6,6 +6,47 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 axios.defaults.baseURL = API_URL;
 axios.defaults.withCredentials = true;
 
+// Helper to generate a stable, persistent device fingerprint
+const getOrCreateDeviceFingerprint = () => {
+  let fingerprint = localStorage.getItem("deviceFingerprint");
+  if (!fingerprint) {
+    // Generate a secure persistent device fingerprint (MAC-like hash style)
+    const randomUUID = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const screenInfo = `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+    const userAgent = navigator.userAgent;
+    const rawString = `${userAgent}-${screenInfo}-${randomUUID}`;
+    
+    // Hash it lightly or just use raw string for identification
+    fingerprint = "DEV-" + btoa(rawString).replace(/[^a-zA-Z0-9]/g, "").substring(0, 24).toUpperCase();
+    localStorage.setItem("deviceFingerprint", fingerprint);
+  }
+  return fingerprint;
+};
+
+// Set up Axios request interceptor for secure device whitelisting & geofencing headers
+axios.interceptors.request.use(
+  (config) => {
+    // 1. Add device fingerprint header
+    const fingerprint = getOrCreateDeviceFingerprint();
+    config.headers["x-device-fingerprint"] = fingerprint;
+
+    // 2. Add latitude/longitude headers if geofence geolocation is allowed/cached
+    const cachedLat = localStorage.getItem("x-latitude");
+    const cachedLng = localStorage.getItem("x-longitude");
+    if (cachedLat && cachedLng) {
+      config.headers["x-latitude"] = cachedLat;
+      config.headers["x-longitude"] = cachedLng;
+    }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 interface AuthContextType {
   staffUser: any | null;
   customerUser: any | null;
@@ -29,6 +70,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Synchronize token state on startup
   useEffect(() => {
+    // Request geolocation if available to enable geofencing checks
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          localStorage.setItem("x-latitude", pos.coords.latitude.toString());
+          localStorage.setItem("x-longitude", pos.coords.longitude.toString());
+        },
+        (err) => {
+          console.warn("Geolocation access denied or failed.", err);
+        },
+        { enableHighAccuracy: true }
+      );
+    }
+
     const initAuth = async () => {
       // Apply any saved tokens in localStorage to axios headers immediately on startup
       const staffToken = localStorage.getItem("staffToken");

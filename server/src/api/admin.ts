@@ -20,7 +20,8 @@ import {
   auditLogs, 
   staffUsers,
   roles,
-  settings 
+  settings,
+  authorizedDevices
 } from "../db/schema";
 import { eq, and, desc, sql, like, or } from "drizzle-orm";
 import { AuthenticatedRequest, authenticateToken, requireRole, requirePermission, requirePasswordAuth } from "../middleware/auth";
@@ -1557,6 +1558,152 @@ router.patch("/staff/:id", authenticateToken, requirePermission("manage_staff"),
     });
     
     return res.json({ message: "Staff user updated successfully." });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Device Security Access Management: Get All registered devices
+router.get("/devices", authenticateToken, requirePermission("manage_staff"), async (req, res, next) => {
+  try {
+    const list = await db.select().from(authorizedDevices).orderBy(desc(authorizedDevices.createdAt));
+    return res.json(list);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Device Security: Approve Device
+router.post("/devices/approve", authenticateToken, requirePermission("manage_staff"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { deviceId } = req.body;
+    if (!deviceId) return res.status(400).json({ error: "Device ID is required." });
+
+    const deviceIdNum = parseInt(deviceId);
+    
+    // Check if device exists
+    const list = await db.select().from(authorizedDevices).where(eq(authorizedDevices.id, deviceIdNum));
+    if (list.length === 0) return res.status(404).json({ error: "Device not found." });
+
+    const device = list[0];
+
+    await db.update(authorizedDevices)
+      .set({ 
+        status: "approved", 
+        approvedBy: req.user?.id, 
+        approvedAt: new Date()
+      })
+      .where(eq(authorizedDevices.id, deviceIdNum));
+
+    await logAudit(req, {
+      action: "DEVICE_APPROVED",
+      reason: `Approved device: ${device.deviceName} (Fingerprint: ${device.deviceFingerprint})`
+    });
+
+    return res.json({ success: true, message: "Device has been authorized successfully!" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Device Security: Reject / Block Device
+router.post("/devices/reject", authenticateToken, requirePermission("manage_staff"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { deviceId } = req.body;
+    if (!deviceId) return res.status(400).json({ error: "Device ID is required." });
+
+    const deviceIdNum = parseInt(deviceId);
+
+    // Check if device exists
+    const list = await db.select().from(authorizedDevices).where(eq(authorizedDevices.id, deviceIdNum));
+    if (list.length === 0) return res.status(404).json({ error: "Device not found." });
+
+    const device = list[0];
+
+    await db.update(authorizedDevices)
+      .set({ status: "rejected" })
+      .where(eq(authorizedDevices.id, deviceIdNum));
+
+    await logAudit(req, {
+      action: "DEVICE_REJECTED",
+      reason: `Blocked/Rejected device: ${device.deviceName} (Fingerprint: ${device.deviceFingerprint})`
+    });
+
+    return res.json({ success: true, message: "Device has been rejected/blocked successfully." });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Device Security: Toggle Remote Access Bypass
+router.post("/devices/toggle-remote", authenticateToken, requirePermission("manage_staff"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { deviceId } = req.body;
+    if (!deviceId) return res.status(400).json({ error: "Device ID is required." });
+
+    const deviceIdNum = parseInt(deviceId);
+
+    // Check if device exists
+    const list = await db.select().from(authorizedDevices).where(eq(authorizedDevices.id, deviceIdNum));
+    if (list.length === 0) return res.status(404).json({ error: "Device not found." });
+
+    const device = list[0];
+    const newAllowRemote = !device.allowRemote;
+
+    await db.update(authorizedDevices)
+      .set({ allowRemote: newAllowRemote })
+      .where(eq(authorizedDevices.id, deviceIdNum));
+
+    await logAudit(req, {
+      action: "DEVICE_REMOTE_TOGGLED",
+      reason: `Toggled remote bypass on device: ${device.deviceName} to ${newAllowRemote}`
+    });
+
+    return res.json({ success: true, allowRemote: newAllowRemote, message: `Remote bypass toggled to ${newAllowRemote}.` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Security Access & PWA Marketing Settings: Get All portal settings
+router.get("/security-settings", authenticateToken, requirePermission("manage_staff"), async (req, res, next) => {
+  try {
+    const list = await db.select().from(settings);
+    // Filter only security_ and pwa_ settings keys
+    const securitySettingsList = list.filter(s => s.key.startsWith("security_") || s.key.startsWith("pwa_"));
+    return res.json(securitySettingsList);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Security Access Settings: Update settings
+router.post("/security-settings", authenticateToken, requirePermission("manage_staff"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const schema = z.array(z.object({
+      key: z.string(),
+      value: z.string()
+    }));
+
+    const data = schema.parse(req.body);
+
+    for (const item of data) {
+      if (item.key.startsWith("security_") || item.key.startsWith("pwa_")) {
+        await db.update(settings)
+          .set({ 
+            value: item.value,
+            updatedBy: req.user?.id
+          })
+          .where(eq(settings.key, item.key));
+      }
+    }
+
+    await logAudit(req, {
+      action: "SETTINGS_UPDATED",
+      reason: `Updated Security Access or PWA marketing parameters: ${data.map(d => d.key).join(", ")}`
+    });
+
+    return res.json({ success: true, message: "Security settings saved successfully!" });
   } catch (error) {
     next(error);
   }

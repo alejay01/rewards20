@@ -447,3 +447,35 @@ export const rewardRedemptionsRelations = relations(rewardRedemptions, ({ one })
     references: [staffUsers.id]
   })
 }));
+
+// 22. Authorized Devices Table
+export const authorizedDevices = mysqlTable("authorized_devices", {
+  id: int("id").autoincrement().primaryKey(),
+  deviceName: varchar("device_name", { length: 100 }).notNull(),
+  deviceFingerprint: varchar("device_fingerprint", { length: 100 }).notNull().unique(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // 'pending', 'approved', 'rejected'
+  deviceType: varchar("device_type", { length: 50 }),
+  operatingSystem: varchar("operating_system", { length: 50 }),
+  browserName: varchar("browser_name", { length: 50 }),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  lastIp: varchar("last_ip", { length: 45 }),
+  userAgent: varchar("user_agent", { length: 255 }),
+  allowRemote: boolean("allow_remote").default(false).notNull(),
+  approvedBy: int("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow()
+}, (table) => {
+  return {
+    fingerprintIdx: uniqueIndex("device_fingerprint_idx").on(table.deviceFingerprint)
+  };
+});
+
+export const authorizedDevicesRelations = relations(authorizedDevices, ({ one }) => ({
+  approvedByUser: one(staffUsers, {
+    fields: [authorizedDevices.approvedBy],
+    references: [staffUsers.id]
+  })
+}));
+

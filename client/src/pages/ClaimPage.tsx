@@ -122,7 +122,7 @@ export const ClaimPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">Purchase Date *</label>
               <div className="relative">
@@ -173,7 +173,7 @@ export const ClaimPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">Email</label>
               <input 

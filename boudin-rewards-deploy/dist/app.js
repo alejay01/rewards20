@@ -19,6 +19,7 @@ const admin_1 = __importDefault(require("./api/admin"));
 const receipts_1 = __importDefault(require("./api/receipts"));
 const qr_1 = __importDefault(require("./api/qr"));
 const errorHandler_1 = require("./middleware/errorHandler");
+const auth_2 = require("./middleware/auth");
 const app = (0, express_1.default)();
 exports.app = app;
 // Basic Security Configurations
@@ -43,6 +44,7 @@ app.use((0, cors_1.default)({
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cookie_parser_1.default)());
+app.use(auth_2.validateSecurityAccess);
 // 1. Health & Version Routes (Step 28)
 app.get("/health", async (req, res) => {
     let dbStatus = "active";

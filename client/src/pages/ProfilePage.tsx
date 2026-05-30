@@ -79,7 +79,7 @@ export const ProfilePage: React.FC = () => {
 
       {/* Profile Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-5 shadow-md border border-gray-100 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">First Name</label>
             <div className="relative">
@@ -133,7 +133,7 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[9px] font-extrabold text-gray-400 uppercase mb-1">Birthday</label>
             <div className="relative">

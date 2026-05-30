@@ -74,9 +74,75 @@ async function ensureManagerPermissions() {
         console.error("Error during self-healing permission check:", error.message || error);
     }
 }
+async function ensureAuthorizedDevicesTable() {
+    try {
+        console.log("Self-healing check: Verifying authorized_devices table...");
+        await db_1.db.execute((0, drizzle_orm_1.sql) `
+      CREATE TABLE IF NOT EXISTS authorized_devices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        device_name VARCHAR(100) NOT NULL,
+        device_fingerprint VARCHAR(100) NOT NULL UNIQUE,
+        status VARCHAR(20) DEFAULT 'pending' NOT NULL,
+        device_type VARCHAR(50),
+        operating_system VARCHAR(50),
+        browser_name VARCHAR(50),
+        latitude DECIMAL(10, 8),
+        longitude DECIMAL(11, 8),
+        last_ip VARCHAR(45),
+        user_agent VARCHAR(255),
+        allow_remote BOOLEAN DEFAULT false NOT NULL,
+        approved_by INT,
+        approved_at TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+        console.log("authorized_devices table verified/created successfully.");
+    }
+    catch (error) {
+        console.error("Error verifying authorized_devices table:", error.message || error);
+    }
+}
+async function ensureSecuritySettings() {
+    try {
+        console.log("Self-healing check: Verifying and seeding default settings...");
+        const keys = [
+            { key: "security_ip_whitelist", value: "127.0.0.1", description: "Comma-separated list of allowed IP addresses for remote staff bypass" },
+            { key: "security_geofence_enabled", value: "true", description: "Enables geofencing restriction for cashier tablet clock-ins" },
+            { key: "security_geofence_lat", value: "29.5580", description: "Target store latitude coordinate (Rosenberg location)" },
+            { key: "security_geofence_lng", value: "-95.8083", description: "Target store longitude coordinate (Rosenberg location)" },
+            { key: "security_geofence_radius", value: "1000", description: "Allowed clock-in geofence radius in feet around the store coordinates" },
+            { key: "pwa_marketing_radius", value: "1.5", description: "Marketing radius in miles to trigger geofenced specials alerts to PWA customers" },
+            { key: "pwa_marketing_alert_message", value: "Fresh Boudin hot off the smoker today! Double points on any Boudin Links basket!", description: "Cajun Special Message for geofenced push alerts" },
+            { key: "pwa_marketing_enabled", value: "true", description: "Enables client PWA geofence notifications" }
+        ];
+        for (const item of keys) {
+            const existing = await db_1.db.select().from(schema_1.settings).where((0, drizzle_orm_1.eq)(schema_1.settings.key, item.key));
+            if (existing.length === 0) {
+                await db_1.db.insert(schema_1.settings).values({
+                    key: item.key,
+                    value: item.value,
+                    description: item.description
+                });
+                console.log(`Seeded setting: ${item.key}`);
+            }
+        }
+    }
+    catch (error) {
+        console.error("Error during settings seeding:", error.message || error);
+    }
+}
 async function startServer() {
     console.log("===============================================");
     console.log("Starting server & verifying database status...");
+    try {
+        // Perform self-healing database table checks before anything else
+        await ensureAuthorizedDevicesTable();
+        await ensureSecuritySettings();
+    }
+    catch (e) {
+        console.error("Database self-healing checks skipped or failed:", e.message || e);
+    }
     // Resilient migrations folder resolution
     let migrationsFolder = path_1.default.resolve(process.cwd(), "migrations");
     // Fallback checks
