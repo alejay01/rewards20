@@ -262,6 +262,33 @@ export const JoinPage: React.FC = () => {
         </form>
       )}
 
+      {/* Cajun Loyalty Program Rules card */}
+      <div className="bg-brand-charcoal text-white rounded-3xl p-5 border border-brand-red/20 shadow-xl space-y-3 mt-6">
+        <h4 className="font-extrabold text-xs text-brand-gold uppercase tracking-wider flex items-center gap-1.5">
+          <Flame className="w-4 h-4 text-brand-red fill-brand-red" />
+          <span>Official Loyalty Program Rules</span>
+        </h4>
+        
+        <ul className="text-[10px] space-y-2 text-gray-300 font-medium">
+          <li className="flex items-start gap-2">
+            <span className="text-brand-gold">🔸</span>
+            <span><strong>One Visit Per Day:</strong> Guests may log exactly one visit check-in per day per account to earn standard points.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-brand-gold">🔸</span>
+            <span><strong>One Transaction Per Day:</strong> Points are awarded for a maximum of one transaction purchase total per day per account.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-brand-gold">🔸</span>
+            <span><strong>Auto Sign-Up Gift:</strong> Instantly unlock a <strong>Free Boudin Ball (150 PTS)</strong> loaded directly to your card upon registration!</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-brand-gold">🔸</span>
+            <span><strong>Spicy Cajun Perks:</strong> Spend points to redeem fresh hot links, cold drinks, side dishes, and exclusive Boudin Boss custom merchandise.</span>
+          </li>
+        </ul>
+      </div>
+
       {/* Switch Modes */}
       <div className="mt-8 pt-6 border-t border-gray-100 text-center">
         <button 

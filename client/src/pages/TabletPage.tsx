@@ -164,8 +164,8 @@ export const TabletPage: React.FC = () => {
   };
 
   // 2. Action: Add Purchase Total
-  const handleAddPurchase = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddPurchase = async (e?: React.FormEvent, bypassPin?: string) => {
+    if (e) e.preventDefault();
     if (!selectedCustomer || !purchaseAmount) return;
     setErrorState(null);
     setSuccessState(null);
@@ -175,7 +175,8 @@ export const TabletPage: React.FC = () => {
       const res = await apiClient.post("/api/tablet/add-purchase", {
         customerId: selectedCustomer.customer.id,
         amount: purchaseAmount,
-        receiptNumber: receiptNumber || undefined
+        receiptNumber: receiptNumber || undefined,
+        pinOverride: bypassPin
       });
 
       setSuccessState(`Success: Credited $${parseFloat(purchaseAmount).toFixed(2)}. Awarded ${res.data.pointsAwarded} points!`);
@@ -189,7 +190,13 @@ export const TabletPage: React.FC = () => {
       await handleQrLookup(selectedCustomer.loyalty.publicQrToken);
       fetchRecentActivity();
     } catch (e: any) {
-      setErrorState(e.response?.data?.error || "Failed to log purchase.");
+      if (e.response?.status === 422 && e.response?.data?.error === "DUPLICATE_TRANSACTION") {
+        setOverrideAction({ type: "purchase" });
+        setOverrideMessage("Duplicate transaction detected. Enter Manager/Admin PIN to log another purchase today.");
+        setShowOverrideModal(true);
+      } else {
+        setErrorState(e.response?.data?.error || "Failed to log purchase.");
+      }
     } finally {
       setActionLoading(false);
     }
@@ -251,6 +258,8 @@ export const TabletPage: React.FC = () => {
           await handleAddVisit(pin);
         } else if (overrideAction.type === "redeem") {
           await handleRedeemReward(overrideAction.data, pin);
+        } else if (overrideAction.type === "purchase") {
+          await handleAddPurchase(undefined, pin);
         }
       }
     } catch (e: any) {
@@ -689,6 +698,49 @@ export const TabletPage: React.FC = () => {
                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 text-center text-2xl font-mono tracking-[1.5em] focus:outline-none focus:border-brand-red text-white"
                 required
               />
+
+              {/* Numerical Keypad Grid */}
+              <div className="grid grid-cols-3 gap-3 max-w-[220px] mx-auto py-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => {
+                      if (overridePin.length < 4) {
+                        setOverridePin(overridePin + num);
+                      }
+                    }}
+                    className="w-14 h-14 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 text-lg font-black flex items-center justify-center transition-all border border-white/5 hover:border-brand-red/35"
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setOverridePin("")}
+                  className="w-14 h-14 rounded-full bg-brand-red/10 hover:bg-brand-red/20 active:scale-95 text-[10px] font-extrabold text-brand-red flex items-center justify-center transition-all border border-brand-red/20"
+                >
+                  CLEAR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (overridePin.length < 4) {
+                      setOverridePin(overridePin + "0");
+                    }
+                  }}
+                  className="w-14 h-14 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 text-lg font-black flex items-center justify-center transition-all border border-white/5 hover:border-brand-red/35"
+                >
+                  0
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverridePin(overridePin.slice(0, -1))}
+                  className="w-14 h-14 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 text-sm font-black flex items-center justify-center transition-all border border-white/5 hover:border-brand-red/35 font-mono"
+                >
+                  ⌫
+                </button>
+              </div>
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button 

@@ -294,7 +294,7 @@ router.post("/add-visit", authenticateToken, async (req: AuthenticatedRequest, r
 // 3. Tablet Add Purchase Total
 router.post("/add-purchase", authenticateToken, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const { customerId, amount, receiptNumber } = req.body;
+    const { customerId, amount, receiptNumber, pinOverride } = req.body;
 
     if (!customerId || !amount) {
       return res.status(400).json({ error: "Customer ID and purchase amount are required." });
@@ -308,6 +308,41 @@ router.post("/add-purchase", authenticateToken, async (req: AuthenticatedRequest
     const accounts = await db.select().from(loyaltyAccounts).where(eq(loyaltyAccounts.customerId, customerId));
     if (accounts.length === 0) return res.status(404).json({ error: "Account not found." });
     const loyalty = accounts[0];
+
+    // Date calculations
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    // Check duplicate transactions today
+    const purchasesToday = await db.select()
+      .from(purchases)
+      .where(
+        and(
+          eq(purchases.customerId, customerId),
+          sql`DATE(${purchases.createdAt}) = DATE(${todayStr})`
+        )
+      );
+
+    let managerApprovedBy: number | null = null;
+    let overrideUsed = false;
+
+    if (purchasesToday.length > 0) {
+      // Duplicate transaction blocked! Check manager override
+      if (!pinOverride) {
+        return res.status(422).json({
+          error: "DUPLICATE_TRANSACTION",
+          message: "Customer already has a transaction purchase logged today. Manager PIN required to override."
+        });
+      }
+
+      // Verify manager PIN
+      const manager = await verifyManagerPin(pinOverride);
+      if (!manager) {
+        return res.status(401).json({ error: "Invalid Manager PIN." });
+      }
+
+      managerApprovedBy = manager.id;
+      overrideUsed = true;
+    }
 
     const sysSettings = await getSystemSettings();
     const pointsPerDollar = parseInt(sysSettings["points_per_dollar"] || "1");
@@ -348,7 +383,9 @@ router.post("/add-purchase", authenticateToken, async (req: AuthenticatedRequest
       type: "earn_spend",
       pointsChange: pointsToAward,
       balanceAfter: newPointsBalance,
-      reason: `Earned points for purchase total: $${floatAmount.toFixed(2)}${receiptNumber ? ' (Receipt #' + receiptNumber + ')' : ''}`,
+      reason: overrideUsed
+        ? `Earned points for purchase total: $${floatAmount.toFixed(2)}${receiptNumber ? ' (Receipt #' + receiptNumber + ')' : ''} (Duplicate Override by Manager ID ${managerApprovedBy})`
+        : `Earned points for purchase total: $${floatAmount.toFixed(2)}${receiptNumber ? ' (Receipt #' + receiptNumber + ')' : ''}`,
       source: "tablet",
       relatedPurchaseId: purchaseId
     });
@@ -359,9 +396,10 @@ router.post("/add-purchase", authenticateToken, async (req: AuthenticatedRequest
     // Audit logs
     await logAudit(req, {
       customerId,
-      action: "PURCHASE_ADDED",
+      action: overrideUsed ? "DUPLICATE_PURCHASE_OVERRIDE" : "PURCHASE_ADDED",
       pointsChange: pointsToAward,
-      reason: `Recorded shop purchase of $${floatAmount.toFixed(2)}. Awarded ${pointsToAward} pts.`
+      approvedBy: managerApprovedBy || undefined,
+      reason: `Recorded shop purchase of $${floatAmount.toFixed(2)}. Awarded ${pointsToAward} pts. ${overrideUsed ? '(Duplicate Override)' : ''}`
     });
 
     return res.json({
