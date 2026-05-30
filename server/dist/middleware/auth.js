@@ -62,8 +62,10 @@ const requirePermission = (permissionKey) => {
         if (!req.user) {
             return res.status(401).json({ error: "Authentication required." });
         }
-        // Admins have automatic full access bypass
-        if (req.user.permissions.includes("full_access") || req.user.role === "Administrator") {
+        // Admins and Managers have automatic full access bypass
+        if (req.user.permissions.includes("full_access") ||
+            req.user.role === "Administrator" ||
+            req.user.role === "Manager") {
             return next();
         }
         if (!req.user.permissions.includes(permissionKey)) {

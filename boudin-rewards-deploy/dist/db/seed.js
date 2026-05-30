@@ -63,10 +63,11 @@ async function main() {
         for (const p of allPerms) {
             await index_1.db.insert(schema_1.rolePermissions).values({ roleId: adminRoleId, permissionId: p.id });
         }
-        // Manager permissions
+        // Manager permissions (Managers have full operational administrative access)
         const managerPerms = [
-            "add_points", "subtract_points", "redeem_rewards", "approve_overrides",
-            "view_analytics", "manage_promotions"
+            "full_access", "add_points", "subtract_points", "redeem_rewards", "approve_overrides",
+            "manage_staff", "manage_rewards", "manage_tiers", "manage_promotions",
+            "view_audit_logs", "view_analytics", "manage_settings"
         ];
         for (const key of managerPerms) {
             await index_1.db.insert(schema_1.rolePermissions).values({ roleId: managerRoleId, permissionId: getPermId(key) });

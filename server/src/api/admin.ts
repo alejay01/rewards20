@@ -1220,8 +1220,8 @@ router.get("/integrations/loyverse/logs", authenticateToken, async (req, res, ne
   }
 });
 
-// Export customer database (Admin role only)
-router.get("/export-customers", authenticateToken, requireRole(["Administrator"]), async (req, res, next) => {
+// Export customer database (Admin & Manager roles)
+router.get("/export-customers", authenticateToken, requireRole(["Administrator", "Manager"]), async (req, res, next) => {
   try {
     const list = await db.select({
       id: customers.id,
