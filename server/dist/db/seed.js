@@ -159,6 +159,7 @@ async function main() {
         const lastMonth = new Date();
         lastMonth.setMonth(today.getMonth() - 1);
         const promotionsData = [
+            { title: "Sign-Up Gift: Free Boudin Ball", description: "Get a delicious, piping-hot traditional fried Boudin Ball on us just by signing up and installing the application! 150 points are automatically added to your new account.", audienceType: "all", startDate: lastMonth, endDate: nextMonth, active: true, featured: true, doublePoints: false, createdBy: adminStaffId },
             { title: "Double Points Today", description: "Get 2x points on all purchases today! Scan at checkout to earn.", audienceType: "all", startDate: lastMonth, endDate: nextMonth, active: true, featured: true, doublePoints: true, createdBy: adminStaffId },
             { title: "Flamin’ Hot Friday Special", description: "Double points on all crispy, crunch-coated Hot Cheeto Boudin Balls this and every Friday!", audienceType: "all", startDate: lastMonth, endDate: nextMonth, active: true, featured: false, doublePoints: false, createdBy: adminStaffId },
             { title: "Gumbo Weekend Special", description: "Simmer down! Enjoy a free soft drink with any regular gumbo purchase on Saturdays and Sundays.", audienceType: "all", startDate: lastMonth, endDate: nextMonth, active: true, featured: true, doublePoints: false, createdBy: adminStaffId },

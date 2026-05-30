@@ -122,11 +122,25 @@ router.post("/join", async (req, res, next) => {
       rewardsNumber,
       publicQrToken,
       barcodeValue: `BAR-${rewardsNumber}`,
-      pointsBalance: 0,
-      lifetimePoints: 0,
+      pointsBalance: 150, // Immediately award 150 points for sign-up boudin ball gift
+      lifetimePoints: 150,
       totalVisits: 0,
       lifetimeSpend: "0.00",
       currentTierId: rookieTierId
+    });
+
+    const accounts = await db.select().from(loyaltyAccounts).where(eq(loyaltyAccounts.customerId, customer.id));
+    const loyalty = accounts[0];
+
+    // Insert points ledger entry for the signup boudin ball points
+    await db.insert(pointsLedger).values({
+      customerId: customer.id,
+      loyaltyAccountId: loyalty.id,
+      type: "earn_promo",
+      pointsChange: 150,
+      balanceAfter: 150,
+      reason: "Sign-Up Gift: Free Boudin Ball",
+      source: "system"
     });
 
     // Sign customer JWT for auto-login

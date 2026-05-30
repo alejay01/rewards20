@@ -895,11 +895,16 @@ export const AdminPage: React.FC = () => {
                         <p className="text-[10px] font-extrabold text-brand-charcoal uppercase tracking-wider">Points Ledger History</p>
                         <div className="max-h-28 overflow-y-auto space-y-1 pr-1 font-sans">
                           {selectedCust.ledger.map((log: any) => (
-                            <div key={log.id} className="flex justify-between items-center text-[10px] bg-gray-50 border border-gray-100 rounded-lg p-1.5">
+                            <div key={log.id} className="flex justify-between items-center text-[10px] bg-gray-50 border border-gray-100 rounded-lg p-1.5 hover:bg-gray-100/50 transition-colors">
                               <div className="space-y-0.5 max-w-[70%]">
                                 <p className="font-bold text-brand-charcoal truncate" title={log.reason || "Points adjustment"}>
                                   {log.reason || "Points adjustment"}
                                 </p>
+                                {log.receiptNumber && (
+                                  <p className="text-[8px] text-brand-red font-extrabold uppercase">
+                                    Receipt: {log.receiptNumber} {log.amount && `| $${parseFloat(log.amount).toFixed(2)}`}
+                                  </p>
+                                )}
                                 <p className="text-[8px] text-gray-400 font-mono">{new Date(log.createdAt).toLocaleDateString()}</p>
                               </div>
                               <span className={`font-mono font-black shrink-0 ${log.pointsChange > 0 ? "text-emerald-600" : "text-brand-red"}`}>
@@ -907,6 +912,41 @@ export const AdminPage: React.FC = () => {
                               </span>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cajun Purchasing Trends */}
+                    {selectedCust.trends && selectedCust.trends.length > 0 && (
+                      <div className="border-t pt-4 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <p className="text-[10px] font-extrabold text-brand-charcoal uppercase tracking-wider">Purchasing Trends</p>
+                          <span className="text-[8px] font-black uppercase text-brand-gold bg-brand-gold/10 px-2 py-0.5 rounded-full border border-brand-gold/25">
+                            Favorite: {selectedCust.trends[0]?.itemName || "N/A"}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {selectedCust.trends.slice(0, 3).map((item: any, idx: number) => {
+                            const colors = ["bg-brand-red", "bg-brand-gold", "bg-brand-charcoal"];
+                            const barColor = colors[idx % colors.length];
+                            const maxCount = selectedCust.trends[0]?.count || 1;
+                            const percent = Math.round((item.count / maxCount) * 100);
+
+                            return (
+                              <div key={item.itemName} className="space-y-1 text-[10px]">
+                                <div className="flex justify-between font-bold text-gray-600">
+                                  <span>{item.itemName}</span>
+                                  <span className="font-mono text-brand-charcoal">{item.count} orders</span>
+                                </div>
+                                <div className="w-full bg-gray-150 h-1.5 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full ${barColor} rounded-full transition-all`} 
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
