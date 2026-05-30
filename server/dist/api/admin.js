@@ -1166,12 +1166,15 @@ router.get("/audit-logs", auth_1.authenticateToken, (0, auth_1.requirePermission
             ipAddress: schema_1.auditLogs.ipAddress,
             reason: schema_1.auditLogs.reason,
             createdAt: schema_1.auditLogs.createdAt,
-            customerName: (0, drizzle_orm_1.sql) `CONCAT(${schema_1.customers.firstName}, ' ', ${schema_1.customers.lastName})`
+            customerName: (0, drizzle_orm_1.sql) `CONCAT(${schema_1.customers.firstName}, ' ', ${schema_1.customers.lastName})`,
+            actorName: schema_1.staffUsers.name,
+            actorEmail: schema_1.staffUsers.email
         })
             .from(schema_1.auditLogs)
             .leftJoin(schema_1.customers, (0, drizzle_orm_1.eq)(schema_1.auditLogs.customerId, schema_1.customers.id))
+            .leftJoin(schema_1.staffUsers, (0, drizzle_orm_1.eq)(schema_1.auditLogs.actorUserId, schema_1.staffUsers.id))
             .orderBy((0, drizzle_orm_1.desc)(schema_1.auditLogs.createdAt))
-            .limit(50);
+            .limit(250);
         return res.json(list);
     }
     catch (error) {

@@ -121,6 +121,11 @@ export const AdminPage: React.FC = () => {
   const [promoFormError, setPromoFormError] = useState<string | null>(null);
   const [promoFormLoading, setPromoFormLoading] = useState(false);
   
+  // Audit filter states
+  const [auditSearchQuery, setAuditSearchQuery] = useState("");
+  const [selectedAuditEmail, setSelectedAuditEmail] = useState("");
+  const [selectedAuditAction, setSelectedAuditAction] = useState("");
+  
   // Loyverse action loaders
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -1331,52 +1336,151 @@ export const AdminPage: React.FC = () => {
           )}
 
           {/* TAB 7: SYSTEM AUDIT LOGS */}
-          {activeSubTab === "audits" && (
-            <div className="space-y-6">
+          {activeSubTab === "audits" && (() => {
+            const uniqueEmails = Array.from(new Set(auditLogsList.map(log => log.actorEmail).filter(Boolean))) as string[];
+            const uniqueActions = Array.from(new Set(auditLogsList.map(log => log.action).filter(Boolean))) as string[];
+
+            const filteredAudits = auditLogsList.filter(log => {
+              const matchesSearch = !auditSearchQuery ? true : (
+                (log.action?.toLowerCase().includes(auditSearchQuery.toLowerCase())) ||
+                (log.reason?.toLowerCase().includes(auditSearchQuery.toLowerCase())) ||
+                (log.actorEmail?.toLowerCase().includes(auditSearchQuery.toLowerCase())) ||
+                (log.actorName?.toLowerCase().includes(auditSearchQuery.toLowerCase()))
+              );
               
-              <div>
-                <h3 className="text-lg font-black tracking-tight">System Security Audits</h3>
-                <p className="text-xs text-gray-400 mt-1">Review the most recent sensitive adjustments, overrides, and role actions.</p>
-              </div>
+              const matchesEmail = !selectedAuditEmail ? true : log.actorEmail === selectedAuditEmail;
+              const matchesAction = !selectedAuditAction ? true : log.action === selectedAuditAction;
+              
+              return matchesSearch && matchesEmail && matchesAction;
+            });
 
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
-                      <th className="py-3 px-4">Action Type</th>
-                      <th className="py-3 px-4">Security Reason / Note</th>
-                      <th className="py-3 px-4">Impact</th>
-                      <th className="py-3 px-4 text-right">Timestamp</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 text-xs">
-                    {auditLogsList.map(log => (
-                      <tr key={log.id}>
-                        <td className="py-3.5 px-4 font-bold text-brand-charcoal">
-                          <p>{log.action}</p>
-                          <p className="text-[9px] font-bold text-gray-400 tracking-wide uppercase mt-0.5">Role: {log.actorRole || "System"}</p>
-                        </td>
-                        <td className="py-3.5 px-4 text-gray-500">{log.reason}</td>
-                        <td className="py-3.5 px-4 font-extrabold">
-                          {log.pointsChange !== null ? (
-                            <span className={log.pointsChange > 0 ? "text-emerald-500" : "text-brand-red"}>
-                              {log.pointsChange > 0 ? `+${log.pointsChange}` : log.pointsChange} PTS
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">N/A</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-gray-400 text-[10px] font-mono">
-                          {new Date(log.createdAt).toLocaleTimeString()}
-                        </td>
+            return (
+              <div className="space-y-6">
+                
+                <div>
+                  <h3 className="text-lg font-black tracking-tight">System Security Audits</h3>
+                  <p className="text-xs text-gray-400 mt-1">Review the most recent sensitive adjustments, overrides, and role actions.</p>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between text-xs">
+                  
+                  {/* Search query input */}
+                  <div className="relative w-full md:w-1/3">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text"
+                      placeholder="Search logs (email, description, action)..."
+                      value={auditSearchQuery}
+                      onChange={(e) => setAuditSearchQuery(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 pl-10 pr-3 focus:outline-none focus:border-brand-red text-brand-charcoal text-xs font-medium"
+                    />
+                  </div>
+
+                  {/* Dropdown Filters */}
+                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-2/3 md:justify-end">
+                    <div className="w-full sm:w-48 space-y-1">
+                      <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Filter by Staff Email</label>
+                      <select
+                        value={selectedAuditEmail}
+                        onChange={(e) => setSelectedAuditEmail(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-brand-red text-brand-charcoal"
+                      >
+                        <option value="">-- All Emails --</option>
+                        {uniqueEmails.map(email => (
+                          <option key={email} value={email}>{email}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="w-full sm:w-48 space-y-1">
+                      <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Filter by Action Type</label>
+                      <select
+                        value={selectedAuditAction}
+                        onChange={(e) => setSelectedAuditAction(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-semibold focus:outline-none focus:border-brand-red text-brand-charcoal"
+                      >
+                        <option value="">-- All Actions --</option>
+                        {uniqueActions.map(act => (
+                          <option key={act} value={act}>{act}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Reset Button */}
+                    {(auditSearchQuery || selectedAuditEmail || selectedAuditAction) && (
+                      <button
+                        onClick={() => {
+                          setAuditSearchQuery("");
+                          setSelectedAuditEmail("");
+                          setSelectedAuditAction("");
+                        }}
+                        className="text-brand-red hover:underline text-xs font-bold self-end py-2 px-1 text-nowrap"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                        <th className="py-3 px-4">Action Type</th>
+                        <th className="py-3 px-4">Changed By</th>
+                        <th className="py-3 px-4">Security Reason / Note</th>
+                        <th className="py-3 px-4">Impact</th>
+                        <th className="py-3 px-4 text-right">Timestamp</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 text-xs">
+                      {filteredAudits.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-gray-400 font-bold">
+                            ⚠️ No audit logs match your search and filter criteria.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAudits.map(log => (
+                          <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="py-3.5 px-4 font-bold text-brand-charcoal">
+                              <p>{log.action}</p>
+                              <p className="text-[9px] font-bold text-gray-400 tracking-wide uppercase mt-0.5">Role: {log.actorRole || "System"}</p>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {log.actorEmail ? (
+                                <div>
+                                  <p className="font-bold text-brand-charcoal">{log.actorName || "Staff Member"}</p>
+                                  <p className="text-[10px] text-gray-400 lowercase">{log.actorEmail}</p>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 font-mono text-[10px] uppercase">SYSTEM / SELF</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-gray-500 max-w-[300px] truncate" title={log.reason}>{log.reason}</td>
+                            <td className="py-3.5 px-4 font-extrabold">
+                              {log.pointsChange !== null ? (
+                                <span className={log.pointsChange > 0 ? "text-emerald-500" : "text-brand-red"}>
+                                  {log.pointsChange > 0 ? `+${log.pointsChange}` : log.pointsChange} PTS
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">N/A</span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-right text-gray-400 text-[10px] font-mono">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* TAB 8: STAFF ACCESS MANAGEMENT */}
           {activeSubTab === "staff" && (

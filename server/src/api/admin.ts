@@ -1352,12 +1352,15 @@ router.get("/audit-logs", authenticateToken, requirePermission("view_audit_logs"
       ipAddress: auditLogs.ipAddress,
       reason: auditLogs.reason,
       createdAt: auditLogs.createdAt,
-      customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`
+      customerName: sql<string>`CONCAT(${customers.firstName}, ' ', ${customers.lastName})`,
+      actorName: staffUsers.name,
+      actorEmail: staffUsers.email
     })
     .from(auditLogs)
     .leftJoin(customers, eq(auditLogs.customerId, customers.id))
+    .leftJoin(staffUsers, eq(auditLogs.actorUserId, staffUsers.id))
     .orderBy(desc(auditLogs.createdAt))
-    .limit(50);
+    .limit(250);
 
     return res.json(list);
   } catch (error) {
