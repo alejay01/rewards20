@@ -8,21 +8,34 @@
     <meta name="description" content="Simmer and earn! Join Boudin Boss Rewards by The Boudin Company in Rosenberg, Texas." />
     <link rel="manifest" href="manifest.webmanifest" />
     <title>Boudin Boss Rewards - The Boudin Company</title>
-    <script type="module" crossorigin src="./assets/index-OpArplg0.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BzOR94VF.css">
+    <script type="module" crossorigin src="./assets/index-CJf6p63L.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Cr1_3jpr.css">
   </head>
   <body>
     <div id="root"></div>
     <script>
+      // Unregister any active PWA service workers and clear all browser cache storage to resolve aggressive Chrome caching
       if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("service-worker.js")
-            .then(reg => {
-              console.log("PWA Service Worker registered:", reg.scope);
-              // Force-check for updates to the service worker script immediately on page load
-              reg.update();
-            })
-            .catch(err => console.error("PWA Service Worker registration failed:", err));
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          for (const registration of registrations) {
+            registration.unregister().then(success => {
+              if (success) {
+                console.log("Service Worker successfully unregistered and deleted.");
+                // Hard reload the page after unregistering to ensure clean fetch from network
+                window.location.reload();
+              }
+            });
+          }
+        });
+      }
+
+      if ("caches" in window) {
+        caches.keys().then(keys => {
+          for (const key of keys) {
+            caches.delete(key).then(() => {
+              console.log("Cache storage cleared: ", key);
+            });
+          }
         });
       }
     </script>

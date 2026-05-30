@@ -116,6 +116,10 @@ export const requirePermission = (permissionKey: string) => {
 
 // 4. Global Security Firewall Middleware (IP / MAC Fingerprint / Geofence Whitelist)
 export const validateSecurityAccess = async (req: Request, res: Response, next: NextFunction) => {
+  // Bypassed/disabled for now as requested by user
+  next();
+  return;
+
   const path = req.path;
   const isStaffRoute = path.startsWith("/api/admin") || path.startsWith("/api/tablet") || path.startsWith("/api/auth");
   
@@ -228,7 +232,7 @@ export const validateSecurityAccess = async (req: Request, res: Response, next: 
 
     // Check role-based geofence
     const authHeader = req.headers["authorization"];
-    const tokenFromHeader = authHeader && authHeader.split(" ")[1];
+    const tokenFromHeader = typeof authHeader === "string" ? (authHeader as string).split(" ")[1] : undefined;
     const tokenFromCookie = req.cookies?.token;
     const token = tokenFromHeader || tokenFromCookie;
 
@@ -262,8 +266,8 @@ export const validateSecurityAccess = async (req: Request, res: Response, next: 
                 const storeLng = parseFloat(dbSettings.find(s => s.key === "security_geofence_lng")?.value || "-95.8083");
                 const radiusLimit = parseFloat(dbSettings.find(s => s.key === "security_geofence_radius")?.value || "1000");
 
-                const clientLat = parseFloat(lat.toString());
-                const clientLng = parseFloat(lng.toString());
+                const clientLat = parseFloat(lat!.toString());
+                const clientLng = parseFloat(lng!.toString());
 
                 // Haversine distance in feet
                 const R = 20902231; // feet

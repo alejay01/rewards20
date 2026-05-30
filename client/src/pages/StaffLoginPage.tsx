@@ -37,7 +37,7 @@ export const StaffLoginPage: React.FC = () => {
       const data = await loginStaff(email, password);
       const role = data.user?.role;
 
-      if (role === "Administrator") {
+      if (role === "Administrator" || role === "Manager") {
         navigate("/admin");
       } else {
         navigate("/tablet");

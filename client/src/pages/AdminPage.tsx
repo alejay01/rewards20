@@ -733,7 +733,8 @@ export const AdminPage: React.FC = () => {
             { id: "promotions", label: "Specials/Promos", icon: <Flame className="w-4 h-4" /> },
             { id: "claims", label: "Receipt Claims", icon: <FileText className="w-4 h-4" /> },
             { id: "loyverse", label: "Loyverse Sync", icon: <Settings className="w-4 h-4" /> },
-            { id: "security", label: "Security Access", icon: <ShieldAlert className="w-4 h-4" /> },
+            // Security tab temporarily hidden as requested
+            // { id: "security", label: "Security Access", icon: <ShieldAlert className="w-4 h-4" /> },
             { id: "pwa", label: "PWA Settings", icon: <Settings className="w-4 h-4" /> },
             { id: "audits", label: "System Audits", icon: <FileText className="w-4 h-4" /> },
             { id: "staff", label: "Staff Access", icon: <Key className="w-4 h-4" /> }
@@ -756,8 +757,8 @@ export const AdminPage: React.FC = () => {
         {/* Content body */}
         <main className="flex-1 p-8 overflow-y-auto">
           
-          {/* Security Alert Banner */}
-          {pendingDevicesCount > 0 && (
+          {/* Security Alert Banner (Temporarily disabled as requested) */}
+          {false && pendingDevicesCount > 0 && (
             <div className="bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl p-4 mb-6 shadow-md border-b-2 border-red-800 flex justify-between items-center relative overflow-hidden animate-pulse">
               <div className="flex items-center gap-3 relative z-10">
                 <ShieldAlert className="w-6 h-6 text-white animate-bounce shrink-0" />

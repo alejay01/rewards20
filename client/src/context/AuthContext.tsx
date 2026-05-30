@@ -70,7 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Synchronize token state on startup
   useEffect(() => {
-    // Request geolocation if available to enable geofencing checks
+    // Geolocation request temporarily disabled for now
+    /*
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -83,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { enableHighAccuracy: true }
       );
     }
+    */
 
     const initAuth = async () => {
       // Apply any saved tokens in localStorage to axios headers immediately on startup

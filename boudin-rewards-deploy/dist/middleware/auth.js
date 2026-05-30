@@ -92,6 +92,9 @@ const requirePermission = (permissionKey) => {
 exports.requirePermission = requirePermission;
 // 4. Global Security Firewall Middleware (IP / MAC Fingerprint / Geofence Whitelist)
 const validateSecurityAccess = async (req, res, next) => {
+    // Bypassed/disabled for now as requested by user
+    next();
+    return;
     const path = req.path;
     const isStaffRoute = path.startsWith("/api/admin") || path.startsWith("/api/tablet") || path.startsWith("/api/auth");
     if (!isStaffRoute) {
@@ -200,7 +203,7 @@ const validateSecurityAccess = async (req, res, next) => {
         }
         // Check role-based geofence
         const authHeader = req.headers["authorization"];
-        const tokenFromHeader = authHeader && authHeader.split(" ")[1];
+        const tokenFromHeader = typeof authHeader === "string" ? authHeader.split(" ")[1] : undefined;
         const tokenFromCookie = req.cookies?.token;
         const token = tokenFromHeader || tokenFromCookie;
         if (token) {
