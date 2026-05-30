@@ -11,6 +11,7 @@ interface AuthContextType {
   customerUser: any | null;
   loading: boolean;
   loginStaff: (email: string, password: string) => Promise<any>;
+  loginStaffWithPin: (pin: string) => Promise<any>;
   logoutStaff: () => Promise<void>;
   loginCustomer: (identifier: string) => Promise<any>;
   joinCustomer: (data: any) => Promise<any>;
@@ -80,6 +81,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res.data;
   };
 
+  const loginStaffWithPin = async (pin: string) => {
+    const res = await axios.post("/api/auth/pin-login", { pin });
+    if (res.data?.user) {
+      setStaffUser(res.data.user);
+      setCustomerUser(null); // Clear customer context if staff logs in
+      if (res.data.token) {
+        localStorage.setItem("staffToken", res.data.token);
+        axios.defaults.headers.common["Authorization"] = `Bearer ${res.data.token}`;
+      }
+    }
+    return res.data;
+  };
+
   const logoutStaff = async () => {
     await axios.post("/api/auth/logout");
     setStaffUser(null);
@@ -138,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         customerUser,
         loading,
         loginStaff,
+        loginStaffWithPin,
         logoutStaff,
         loginCustomer,
         joinCustomer,

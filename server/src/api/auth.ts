@@ -102,6 +102,99 @@ router.post("/login", loginLimiter, async (req, res, next) => {
   }
 });
 
+// Rate limiter for PIN login to prevent brute-force attacks
+const pinLoginLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20, // Limit each IP to 20 attempts
+  message: { error: "Too many PIN attempts. Please try again after 5 minutes." }
+});
+
+// 1.5 Staff PIN Login (For quick-access counter tablet bootstrapper)
+router.post("/pin-login", pinLoginLimiter, async (req, res, next) => {
+  try {
+    const { pin } = req.body;
+
+    if (!pin) {
+      return res.status(400).json({ error: "PIN code is required." });
+    }
+
+    // Since PINs are 4 digits and hashed, scan active staff users in the database
+    const staff = await db.select().from(staffUsers).where(eq(staffUsers.active, true));
+    
+    let matchingUser = null;
+    for (const member of staff) {
+      if (member.pinHash) {
+        const match = bcrypt.compareSync(pin, member.pinHash);
+        if (match) {
+          matchingUser = member;
+          break;
+        }
+      }
+    }
+
+    if (!matchingUser) {
+      return res.status(401).json({ error: "Invalid PIN code." });
+    }
+
+    const user = matchingUser;
+
+    // Fetch Role Name and permissions
+    const staffRoleList = await db.select().from(roles).where(eq(roles.id, user.roleId));
+    const roleName = staffRoleList[0]?.name || "Team Member";
+
+    // Fetch granular permissions
+    const mappedPerms = await db.select({
+      key: permissions.key
+    })
+    .from(rolePermissions)
+    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+    .where(eq(rolePermissions.roleId, user.roleId));
+
+    const permissionsArray = mappedPerms.map(p => p.key);
+
+    // Sign JWT
+    const token = jwt.sign(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: roleName,
+        roleId: user.roleId,
+        permissions: permissionsArray
+      },
+      JWT_SECRET,
+      { expiresIn: "8h" }
+    );
+
+    // Set secure HTTP-only cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 8 * 60 * 60 * 1000, // 8 hours
+      sameSite: "lax"
+    });
+
+    // Log the successful quick login to audits
+    await logAudit(req, {
+      action: "STAFF_PIN_LOGIN",
+      reason: `Staff user logged in via quick-access PIN: ${user.name} (${roleName})`
+    });
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: roleName,
+        permissions: permissionsArray
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // 2. Staff Logout
 router.post("/logout", (req, res) => {
   res.clearCookie("token");
