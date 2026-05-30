@@ -22,7 +22,7 @@ export const AdminPage: React.FC = () => {
   }, [staffUser, navigate]);
 
   // States
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "customers" | "rewards" | "promotions" | "claims" | "loyverse" | "audits">("overview");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "customers" | "rewards" | "promotions" | "claims" | "loyverse" | "audits" | "staff">("overview");
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<any>(null);
   
@@ -33,6 +33,8 @@ export const AdminPage: React.FC = () => {
   const [claimsList, setClaimsList] = useState<any[]>([]);
   const [auditLogsList, setAuditLogsList] = useState<any[]>([]);
   const [loyverseStatus, setLoyverseStatus] = useState<any>(null);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [rolesList, setRolesList] = useState<any[]>([]);
 
   // Search & Detail Overlays
   const [custSearch, setCustSearch] = useState("");
@@ -48,6 +50,32 @@ export const AdminPage: React.FC = () => {
   const [showAddRewardModal, setShowAddRewardModal] = useState(false);
   const [showAddPromoModal, setShowAddPromoModal] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [showEditStaffModal, setShowEditStaffModal] = useState(false);
+  const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+
+  // Edit Customer Form State
+  const [editCustFirstName, setEditCustFirstName] = useState("");
+  const [editCustLastName, setEditCustLastName] = useState("");
+  const [editCustEmail, setEditCustEmail] = useState("");
+  const [editCustPhone, setEditCustPhone] = useState("");
+  const [editCustBirthday, setEditCustBirthday] = useState("");
+  const [editCustFavoriteCategory, setEditCustFavoriteCategory] = useState("");
+  const [editCustConsentPromotions, setEditCustConsentPromotions] = useState(false);
+  const [editCustStatus, setEditCustStatus] = useState("active");
+  const [editCustFormError, setEditCustFormError] = useState<string | null>(null);
+  const [editCustFormLoading, setEditCustFormLoading] = useState(false);
+
+  // Create/Edit Staff Form State
+  const [staffName, setStaffName] = useState("");
+  const [staffEmail, setStaffEmail] = useState("");
+  const [staffPassword, setStaffPassword] = useState("");
+  const [staffPin, setStaffPin] = useState("");
+  const [staffRoleId, setStaffRoleId] = useState<number | "">("");
+  const [staffActive, setStaffActive] = useState(true);
+  const [staffFormError, setStaffFormError] = useState<string | null>(null);
+  const [staffFormLoading, setStaffFormLoading] = useState(false);
 
   // Create Customer Form State
   const [custFirstName, setCustFirstName] = useState("");
@@ -119,6 +147,11 @@ export const AdminPage: React.FC = () => {
       } else if (activeSubTab === "audits") {
         const res = await apiClient.get("/api/admin/audit-logs");
         setAuditLogsList(res.data);
+      } else if (activeSubTab === "staff") {
+        const res = await apiClient.get("/api/admin/staff");
+        setStaffList(res.data);
+        const rRes = await apiClient.get("/api/admin/roles");
+        setRolesList(rRes.data);
       }
     } catch (e) {
       console.error("Error fetching admin stats:", e);
@@ -166,6 +199,126 @@ export const AdminPage: React.FC = () => {
     } finally {
       setCustFormLoading(false);
     }
+  };
+
+  const handleEditCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCust) return;
+    setEditCustFormError(null);
+    setEditCustFormLoading(true);
+    try {
+      await apiClient.patch(`/api/admin/customers/${selectedCust.customer.id}`, {
+        firstName: editCustFirstName,
+        lastName: editCustLastName,
+        email: editCustEmail || undefined,
+        phone: editCustPhone || undefined,
+        birthday: editCustBirthday || undefined,
+        favoriteCategory: editCustFavoriteCategory || undefined,
+        consentPromotions: editCustConsentPromotions,
+        status: editCustStatus
+      });
+      setShowEditCustomerModal(false);
+      await handleCustomerClick(selectedCust.customer.id);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setEditCustFormError(err.response?.data?.error || "Failed to update customer.");
+    } finally {
+      setEditCustFormLoading(false);
+    }
+  };
+
+  const handleCreateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStaffFormError(null);
+    setStaffFormLoading(true);
+    try {
+      await apiClient.post("/api/admin/staff", {
+        name: staffName,
+        email: staffEmail,
+        password: staffPassword,
+        pin: staffPin || undefined,
+        roleId: parseInt(staffRoleId.toString()),
+        active: staffActive
+      });
+      setStaffName("");
+      setStaffEmail("");
+      setStaffPassword("");
+      setStaffPin("");
+      setStaffRoleId("");
+      setStaffActive(true);
+      setShowAddStaffModal(false);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setStaffFormError(err.response?.data?.error || "Failed to create staff member.");
+    } finally {
+      setStaffFormLoading(false);
+    }
+  };
+
+  const handleEditStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStaff) return;
+    setStaffFormError(null);
+    setStaffFormLoading(true);
+    try {
+      await apiClient.patch(`/api/admin/staff/${selectedStaff.id}`, {
+        name: staffName,
+        email: staffEmail,
+        password: staffPassword || undefined,
+        pin: staffPin || undefined,
+        roleId: parseInt(staffRoleId.toString()),
+        active: staffActive
+      });
+      setStaffName("");
+      setStaffEmail("");
+      setStaffPassword("");
+      setStaffPin("");
+      setStaffRoleId("");
+      setStaffActive(true);
+      setSelectedStaff(null);
+      setShowEditStaffModal(false);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setStaffFormError(err.response?.data?.error || "Failed to update staff member.");
+    } finally {
+      setStaffFormLoading(false);
+    }
+  };
+
+  const toggleStaffActiveStatus = async (staff: any) => {
+    try {
+      await apiClient.patch(`/api/admin/staff/${staff.id}`, {
+        active: !staff.active
+      });
+      loadOverviewMetrics();
+    } catch (err: any) {
+      alert("Failed to toggle staff active status: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const openEditCustomerModal = (cust: any) => {
+    setEditCustFirstName(cust.customer.firstName);
+    setEditCustLastName(cust.customer.lastName);
+    setEditCustEmail(cust.customer.email || "");
+    setEditCustPhone(cust.customer.phone || "");
+    setEditCustBirthday(cust.customer.birthday ? cust.customer.birthday.substring(0, 10) : "");
+    setEditCustFavoriteCategory(cust.customer.favoriteCategory || "");
+    setEditCustConsentPromotions(cust.customer.consentPromotions || false);
+    setEditCustStatus(cust.customer.status || "active");
+    setEditCustFormError(null);
+    setShowEditCustomerModal(true);
+  };
+
+  const openEditStaffModal = (staff: any) => {
+    setSelectedStaff(staff);
+    setStaffName(staff.name);
+    setStaffEmail(staff.email);
+    setStaffPassword("");
+    setStaffPin("");
+    setStaffRoleId(staff.roleId);
+    setStaffActive(staff.active);
+    setStaffFormError(null);
+    setShowEditStaffModal(true);
   };
 
   const handleCreateReward = async (e: React.FormEvent) => {
@@ -346,7 +499,8 @@ export const AdminPage: React.FC = () => {
             { id: "promotions", label: "Specials/Promos", icon: <Flame className="w-4 h-4" /> },
             { id: "claims", label: "Receipt Claims", icon: <FileText className="w-4 h-4" /> },
             { id: "loyverse", label: "Loyverse Sync", icon: <Settings className="w-4 h-4" /> },
-            { id: "audits", label: "System Audits", icon: <ShieldAlert className="w-4 h-4" /> }
+            { id: "audits", label: "System Audits", icon: <ShieldAlert className="w-4 h-4" /> },
+            { id: "staff", label: "Staff Access", icon: <Key className="w-4 h-4" /> }
           ].map(tab => (
             <button
               key={tab.id}
@@ -529,6 +683,95 @@ export const AdminPage: React.FC = () => {
                         <p className="text-lg font-black text-brand-gold">{selectedCust.loyalty.totalVisits}</p>
                       </div>
                     </div>
+
+                    {/* Complete Customer Profile Details */}
+                    <div className="space-y-3 border-t pt-4 text-xs">
+                      <div className="flex justify-between items-center pb-1">
+                        <p className="text-[10px] font-extrabold text-brand-charcoal uppercase tracking-wider">Contact & Profile Info</p>
+                        <button
+                          type="button"
+                          onClick={() => openEditCustomerModal(selectedCust)}
+                          className="text-[10px] text-brand-red hover:underline font-bold"
+                        >
+                          Edit Profile
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[10px] leading-tight">
+                        <div className="overflow-hidden">
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Email Address</p>
+                          <p className="font-semibold text-brand-charcoal truncate" title={selectedCust.customer.email || "No Email Provided"}>
+                            {selectedCust.customer.email || "No Email"}
+                          </p>
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Phone Number</p>
+                          <p className="font-semibold text-brand-charcoal truncate" title={selectedCust.customer.phone || "No Phone Provided"}>
+                            {selectedCust.customer.phone || "No Phone"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Birthday</p>
+                          <p className="font-semibold text-brand-charcoal">
+                            {selectedCust.customer.birthday ? new Date(selectedCust.customer.birthday).toLocaleDateString("en-US", { timeZone: "UTC" }) : "Not Set"}
+                          </p>
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Favorite Item</p>
+                          <p className="font-semibold text-brand-charcoal truncate">{selectedCust.customer.favoriteCategory || "Not Specified"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Loyalty Tier</p>
+                          <p className="font-bold text-brand-gold">{selectedCust.loyalty.tierName}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Status</p>
+                          <p className={`font-bold capitalize ${selectedCust.customer.status === "active" ? "text-emerald-600" : "text-brand-red"}`}>
+                            {selectedCust.customer.status}
+                          </p>
+                        </div>
+                        <div className="col-span-2 overflow-hidden">
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Barcode Card / QR Token</p>
+                          <p className="font-mono text-gray-500 truncate" title={selectedCust.loyalty.barcodeValue || selectedCust.loyalty.publicQrToken}>
+                            {selectedCust.loyalty.barcodeValue || selectedCust.loyalty.rewardsNumber}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-[8px] font-extrabold text-gray-400 uppercase">Member Since</p>
+                          <p className="font-semibold text-gray-500">
+                            {new Date(selectedCust.customer.createdAt).toLocaleDateString()} at {new Date(selectedCust.customer.createdAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${selectedCust.customer.consentPromotions ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>
+                        <p className="text-[8px] text-gray-400 font-bold uppercase">
+                          {selectedCust.customer.consentPromotions ? "Consented to Promotions" : "No Promo Consent"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Points history / Ledger logs */}
+                    {selectedCust.ledger && selectedCust.ledger.length > 0 && (
+                      <div className="border-t pt-4 space-y-2">
+                        <p className="text-[10px] font-extrabold text-brand-charcoal uppercase tracking-wider">Points Ledger History</p>
+                        <div className="max-h-28 overflow-y-auto space-y-1 pr-1 font-sans">
+                          {selectedCust.ledger.map((log: any) => (
+                            <div key={log.id} className="flex justify-between items-center text-[10px] bg-gray-50 border border-gray-100 rounded-lg p-1.5">
+                              <div className="space-y-0.5 max-w-[70%]">
+                                <p className="font-bold text-brand-charcoal truncate" title={log.reason || "Points adjustment"}>
+                                  {log.reason || "Points adjustment"}
+                                </p>
+                                <p className="text-[8px] text-gray-400 font-mono">{new Date(log.createdAt).toLocaleDateString()}</p>
+                              </div>
+                              <span className={`font-mono font-black shrink-0 ${log.pointsChange > 0 ? "text-emerald-600" : "text-brand-red"}`}>
+                                {log.pointsChange > 0 ? `+${log.pointsChange}` : log.pointsChange} PTS
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Manual points adjustment Form */}
                     <form onSubmit={handleManualPointsSubmit} className="border-t pt-4 space-y-3">
@@ -955,6 +1198,107 @@ export const AdminPage: React.FC = () => {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 8: STAFF ACCESS MANAGEMENT */}
+          {activeSubTab === "staff" && (
+            <div className="space-y-6">
+              
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-black tracking-tight">Staff Access Control</h3>
+                  <p className="text-xs text-gray-400 mt-1">Manage employee login credentials, system roles, tablet PIN codes, and active statuses.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setStaffName("");
+                    setStaffEmail("");
+                    setStaffPassword("");
+                    setStaffPin("");
+                    setStaffRoleId("");
+                    setStaffActive(true);
+                    setStaffFormError(null);
+                    setShowAddStaffModal(true);
+                  }}
+                  className="gradient-bg text-white hover:opacity-95 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow active:scale-95"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Create Staff Member</span>
+                </button>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
+                      <th className="py-3 px-4">Staff Member</th>
+                      <th className="py-3 px-4">Email Address</th>
+                      <th className="py-3 px-4">Assigned Role</th>
+                      <th className="py-3 px-4">Active Status</th>
+                      <th className="py-3 px-4 text-nowrap">Date Registered</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-xs">
+                    {staffList.map(staff => (
+                      <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-brand-charcoal">
+                          {staff.name} {staff.id === staffUser?.id && <span className="text-[8px] bg-brand-charcoal text-white rounded-full px-1.5 py-0.5 ml-1 font-normal uppercase">You</span>}
+                        </td>
+                        <td className="py-3.5 px-4 text-gray-500 font-medium">{staff.email}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${
+                            staff.roleName === "Administrator" ? "bg-red-50 text-brand-red border border-brand-red/20" :
+                            staff.roleName === "Manager" ? "bg-amber-50 text-brand-gold border border-brand-gold/20" :
+                            "bg-slate-50 text-slate-500 border border-slate-200"
+                          }`}>
+                            {staff.roleName}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold ${
+                            staff.active 
+                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
+                              : "bg-gray-50 text-gray-400 border border-gray-200"
+                          }`}>
+                            {staff.active ? "Active" : "Deactivated"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-gray-400 font-mono text-[9px] text-nowrap">
+                          {new Date(staff.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-3 text-nowrap">
+                          <button
+                            onClick={() => openEditStaffModal(staff)}
+                            className="text-[10px] font-bold text-brand-charcoal hover:text-brand-red"
+                          >
+                            Edit
+                          </button>
+                          {staff.id !== staffUser?.id && (
+                            <button
+                              onClick={() => toggleStaffActiveStatus(staff)}
+                              className={`text-[10px] font-bold ${
+                                staff.active ? "text-brand-red hover:opacity-80" : "text-emerald-600 hover:opacity-80"
+                              }`}
+                            >
+                              {staff.active ? "Deactivate" : "Activate"}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {staffList.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-xs text-gray-400 font-bold">
+                          No staff users found in database.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1396,6 +1740,394 @@ export const AdminPage: React.FC = () => {
                   className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
                 >
                   {promoFormLoading ? "Saving..." : "Save Promotion"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: EDIT CUSTOMER PROFILE MODAL */}
+      {showEditCustomerModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <PlusCircle className="w-5 h-5 text-brand-red" />
+                <span>Edit Customer Profile</span>
+              </h4>
+              <button 
+                onClick={() => { setShowEditCustomerModal(false); setEditCustFormError(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editCustFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {editCustFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditCustomer} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">First Name *</label>
+                  <input 
+                    type="text" 
+                    value={editCustFirstName}
+                    onChange={(e) => setEditCustFirstName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Last Name *</label>
+                  <input 
+                    type="text" 
+                    value={editCustLastName}
+                    onChange={(e) => setEditCustLastName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Email Address (Optional)</label>
+                <input 
+                  type="email" 
+                  value={editCustEmail}
+                  onChange={(e) => setEditCustEmail(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. customer@gmail.com"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Phone Number (Optional)</label>
+                <input 
+                  type="text" 
+                  value={editCustPhone}
+                  onChange={(e) => setEditCustPhone(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. 713-555-0101"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Birthday (Optional)</label>
+                  <input 
+                    type="date" 
+                    value={editCustBirthday}
+                    onChange={(e) => setEditCustBirthday(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Favorite Item</label>
+                  <select 
+                    value={editCustFavoriteCategory}
+                    onChange={(e) => setEditCustFavoriteCategory(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  >
+                    <option value="">Select Item...</option>
+                    <option value="Boudin Links">Boudin Links</option>
+                    <option value="Boudin Balls">Boudin Balls</option>
+                    <option value="Gumbo">Gumbo</option>
+                    <option value="Crawfish Pie">Crawfish Pie</option>
+                    <option value="Daiquiri">Daiquiri</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 items-center pt-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Account Status</label>
+                  <select 
+                    value={editCustStatus}
+                    onChange={(e) => setEditCustStatus(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  >
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pt-4">
+                  <input 
+                    type="checkbox" 
+                    id="editConsentCheck"
+                    checked={editCustConsentPromotions}
+                    onChange={(e) => setEditCustConsentPromotions(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="editConsentCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Consent to Promotions
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowEditCustomerModal(false); setEditCustFormError(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={editCustFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {editCustFormLoading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: ADD STAFF MEMBER MODAL */}
+      {showAddStaffModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <Key className="w-5 h-5 text-brand-red" />
+                <span>Create Staff Member</span>
+              </h4>
+              <button 
+                onClick={() => { setShowAddStaffModal(false); setStaffFormError(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {staffFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {staffFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateStaff} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Employee Name *</label>
+                <input 
+                  type="text" 
+                  value={staffName}
+                  onChange={(e) => setStaffName(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. Jean Thibodeaux"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Login Email Address *</label>
+                <input 
+                  type="email" 
+                  value={staffEmail}
+                  onChange={(e) => setStaffEmail(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. jean@theboudincompany.com"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Password *</label>
+                  <input 
+                    type="password" 
+                    value={staffPassword}
+                    onChange={(e) => setStaffPassword(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    placeholder="Min 6 chars"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Tablet PIN Code (4 Digits)</label>
+                  <input 
+                    type="password" 
+                    maxLength={4}
+                    value={staffPin}
+                    onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, ""))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal text-center tracking-widest font-mono"
+                    placeholder="e.g. 1234"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 items-center pt-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Assigned Security Role *</label>
+                  <select 
+                    value={staffRoleId}
+                    onChange={(e) => setStaffRoleId(parseInt(e.target.value))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  >
+                    <option value="">Select Role...</option>
+                    {rolesList.map(role => (
+                      <option key={role.id} value={role.id}>{role.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pt-4">
+                  <input 
+                    type="checkbox" 
+                    id="staffActiveCheck"
+                    checked={staffActive}
+                    onChange={(e) => setStaffActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="staffActiveCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Enable Active Login
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowAddStaffModal(false); setStaffFormError(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={staffFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {staffFormLoading ? "Creating..." : "Create Staff"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 6: EDIT STAFF MEMBER MODAL */}
+      {showEditStaffModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <Key className="w-5 h-5 text-brand-red" />
+                <span>Edit Staff Member</span>
+              </h4>
+              <button 
+                onClick={() => { setShowEditStaffModal(false); setStaffFormError(null); setSelectedStaff(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {staffFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {staffFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditStaff} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Employee Name *</label>
+                <input 
+                  type="text" 
+                  value={staffName}
+                  onChange={(e) => setStaffName(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. Jean Thibodeaux"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Login Email Address *</label>
+                <input 
+                  type="email" 
+                  value={staffEmail}
+                  onChange={(e) => setStaffEmail(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. jean@theboudincompany.com"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">New Password (Optional)</label>
+                  <input 
+                    type="password" 
+                    value={staffPassword}
+                    onChange={(e) => setStaffPassword(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    placeholder="Leave blank to keep"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Tablet PIN Code (Optional)</label>
+                  <input 
+                    type="password" 
+                    maxLength={4}
+                    value={staffPin}
+                    onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, ""))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal text-center tracking-widest font-mono"
+                    placeholder="Leave blank to keep"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 items-center pt-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Assigned Security Role *</label>
+                  <select 
+                    value={staffRoleId}
+                    onChange={(e) => setStaffRoleId(parseInt(e.target.value))}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  >
+                    <option value="">Select Role...</option>
+                    {rolesList.map(role => (
+                      <option key={role.id} value={role.id}>{role.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pt-4">
+                  <input 
+                    type="checkbox" 
+                    id="editStaffActiveCheck"
+                    checked={staffActive}
+                    onChange={(e) => setStaffActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="editStaffActiveCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Enable Active Login
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowEditStaffModal(false); setStaffFormError(null); setSelectedStaff(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={staffFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {staffFormLoading ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

@@ -11,6 +11,7 @@ const db_1 = require("../db");
 const schema_1 = require("../db/schema");
 const drizzle_orm_1 = require("drizzle-orm");
 const auth_1 = require("../middleware/auth");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const audit_1 = require("../utils/audit");
 const loyverseClient_1 = require("../integrations/loyverse/loyverseClient");
 const tablet_1 = require("./tablet");
@@ -266,14 +267,41 @@ router.get("/customers/:id", auth_1.authenticateToken, async (req, res, next) =>
 router.patch("/customers/:id", auth_1.authenticateToken, (0, auth_1.requirePermission)("full_access"), async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, email, phone, status } = req.body;
+        const { firstName, lastName, email, phone, birthday, favoriteCategory, consentPromotions, status } = req.body;
+        const customerId = parseInt(id);
+        // Check unique email
+        if (email) {
+            const existing = await db_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.email, email));
+            const duplicate = existing.find(c => c.id !== customerId);
+            if (duplicate) {
+                return res.status(400).json({ error: "A customer with this email already exists." });
+            }
+        }
+        // Check unique phone
+        if (phone) {
+            const existing = await db_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.phone, phone));
+            const duplicate = existing.find(c => c.id !== customerId);
+            if (duplicate) {
+                return res.status(400).json({ error: "A customer with this phone number already exists." });
+            }
+        }
+        const parsedBirthday = birthday ? new Date(birthday) : null;
         await db_1.db.update(schema_1.customers)
-            .set({ firstName, lastName, email, phone, status })
-            .where((0, drizzle_orm_1.eq)(schema_1.customers.id, parseInt(id)));
+            .set({
+            firstName,
+            lastName,
+            email: email || null,
+            phone: phone || null,
+            birthday: parsedBirthday,
+            favoriteCategory: favoriteCategory || null,
+            consentPromotions: consentPromotions !== undefined ? consentPromotions : false,
+            status
+        })
+            .where((0, drizzle_orm_1.eq)(schema_1.customers.id, customerId));
         await (0, audit_1.logAudit)(req, {
-            customerId: parseInt(id),
+            customerId: customerId,
             action: "CUSTOMER_UPDATED",
-            reason: `Admin updated customer profile settings: status set to '${status}'`
+            reason: `Profile settings update (Status: ${status || 'active'})`
         });
         return res.json({ success: true, message: "Customer profile updated." });
     }
@@ -1128,6 +1156,128 @@ router.get("/audit-logs", auth_1.authenticateToken, (0, auth_1.requirePermission
             .orderBy((0, drizzle_orm_1.desc)(schema_1.auditLogs.createdAt))
             .limit(50);
         return res.json(list);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+// Roles List (For dropdown selection in staff management)
+router.get("/roles", auth_1.authenticateToken, (0, auth_1.requirePermission)("manage_staff"), async (req, res, next) => {
+    try {
+        const list = await db_1.db.select().from(schema_1.roles).orderBy(schema_1.roles.name);
+        return res.json(list);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+// Staff Management: List Staff Users
+router.get("/staff", auth_1.authenticateToken, (0, auth_1.requirePermission)("manage_staff"), async (req, res, next) => {
+    try {
+        const list = await db_1.db.select({
+            id: schema_1.staffUsers.id,
+            name: schema_1.staffUsers.name,
+            email: schema_1.staffUsers.email,
+            roleId: schema_1.staffUsers.roleId,
+            roleName: schema_1.roles.name,
+            active: schema_1.staffUsers.active,
+            createdAt: schema_1.staffUsers.createdAt
+        })
+            .from(schema_1.staffUsers)
+            .innerJoin(schema_1.roles, (0, drizzle_orm_1.eq)(schema_1.staffUsers.roleId, schema_1.roles.id))
+            .orderBy(schema_1.staffUsers.name);
+        return res.json(list);
+    }
+    catch (error) {
+        next(error);
+    }
+});
+// Staff Management: Create Staff User
+router.post("/staff", auth_1.authenticateToken, (0, auth_1.requirePermission)("manage_staff"), async (req, res, next) => {
+    try {
+        const schema = zod_1.z.object({
+            name: zod_1.z.string().min(2),
+            email: zod_1.z.string().email(),
+            password: zod_1.z.string().min(6),
+            pin: zod_1.z.string().length(4).optional().or(zod_1.z.literal("")),
+            roleId: zod_1.z.number(),
+            active: zod_1.z.boolean().default(true)
+        });
+        const data = schema.parse(req.body);
+        // Check existing email
+        const existing = await db_1.db.select().from(schema_1.staffUsers).where((0, drizzle_orm_1.eq)(schema_1.staffUsers.email, data.email));
+        if (existing.length > 0) {
+            return res.status(400).json({ error: "A staff member with this email already exists." });
+        }
+        const passwordHash = bcryptjs_1.default.hashSync(data.password, 10);
+        const pinHash = data.pin ? bcryptjs_1.default.hashSync(data.pin, 10) : null;
+        await db_1.db.insert(schema_1.staffUsers).values({
+            name: data.name,
+            email: data.email,
+            passwordHash,
+            pinHash,
+            roleId: data.roleId,
+            active: data.active
+        });
+        // Log in system audits
+        await (0, audit_1.logAudit)(req, {
+            action: `Created staff member ${data.name} (${data.email})`,
+            reason: "Staff registration"
+        });
+        return res.status(201).json({ message: "Staff user created successfully." });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+// Staff Management: Update Staff User
+router.patch("/staff/:id", auth_1.authenticateToken, (0, auth_1.requirePermission)("manage_staff"), async (req, res, next) => {
+    try {
+        const id = parseInt(req.params.id);
+        const schema = zod_1.z.object({
+            name: zod_1.z.string().min(2).optional(),
+            email: zod_1.z.string().email().optional(),
+            password: zod_1.z.string().min(6).optional().or(zod_1.z.literal("")),
+            pin: zod_1.z.string().length(4).optional().or(zod_1.z.literal("")),
+            roleId: zod_1.z.number().optional(),
+            active: zod_1.z.boolean().optional()
+        });
+        const data = schema.parse(req.body);
+        // Verify user exists
+        const existingList = await db_1.db.select().from(schema_1.staffUsers).where((0, drizzle_orm_1.eq)(schema_1.staffUsers.id, id));
+        if (existingList.length === 0) {
+            return res.status(404).json({ error: "Staff user not found." });
+        }
+        const currentStaff = existingList[0];
+        // Verify unique email if updated
+        if (data.email && data.email !== currentStaff.email) {
+            const uniqueCheck = await db_1.db.select().from(schema_1.staffUsers).where((0, drizzle_orm_1.eq)(schema_1.staffUsers.email, data.email));
+            if (uniqueCheck.length > 0) {
+                return res.status(400).json({ error: "Email is already taken by another staff member." });
+            }
+        }
+        const updateValues = {};
+        if (data.name !== undefined)
+            updateValues.name = data.name;
+        if (data.email !== undefined)
+            updateValues.email = data.email;
+        if (data.roleId !== undefined)
+            updateValues.roleId = data.roleId;
+        if (data.active !== undefined)
+            updateValues.active = data.active;
+        if (data.password) {
+            updateValues.passwordHash = bcryptjs_1.default.hashSync(data.password, 10);
+        }
+        if (data.pin !== undefined) {
+            updateValues.pinHash = data.pin ? bcryptjs_1.default.hashSync(data.pin, 10) : null;
+        }
+        await db_1.db.update(schema_1.staffUsers).set(updateValues).where((0, drizzle_orm_1.eq)(schema_1.staffUsers.id, id));
+        // Log in system audits
+        await (0, audit_1.logAudit)(req, {
+            action: `Updated staff member ${currentStaff.name} (${currentStaff.email})`,
+            reason: "Staff profile edit"
+        });
+        return res.json({ message: "Staff user updated successfully." });
     }
     catch (error) {
         next(error);

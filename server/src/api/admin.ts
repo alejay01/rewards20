@@ -18,11 +18,13 @@ import {
   loyverseReceipts, 
   integrationLogs, 
   auditLogs, 
-  staffUsers, 
+  staffUsers,
+  roles,
   settings 
 } from "../db/schema";
 import { eq, and, desc, sql, like, or } from "drizzle-orm";
 import { AuthenticatedRequest, authenticateToken, requireRole, requirePermission } from "../middleware/auth";
+import bcrypt from "bcryptjs";
 import { logAudit } from "../utils/audit";
 import { loyverseClient } from "../integrations/loyverse/loyverseClient";
 import { updateCustomerTier } from "./tablet";
@@ -316,19 +318,49 @@ router.get("/customers/:id", authenticateToken, async (req, res, next) => {
 });
 
 // 4. Update Customer Profile
-router.patch("/customers/:id", authenticateToken, requirePermission("full_access"), async (req, res, next) => {
+router.patch("/customers/:id", authenticateToken, requirePermission("full_access"), async (req: AuthenticatedRequest, res, next) => {
   try {
     const { id } = req.params;
-    const { firstName, lastName, email, phone, status } = req.body;
+    const { firstName, lastName, email, phone, birthday, favoriteCategory, consentPromotions, status } = req.body;
+    const customerId = parseInt(id);
+
+    // Check unique email
+    if (email) {
+      const existing = await db.select().from(customers).where(eq(customers.email, email));
+      const duplicate = existing.find(c => c.id !== customerId);
+      if (duplicate) {
+        return res.status(400).json({ error: "A customer with this email already exists." });
+      }
+    }
+
+    // Check unique phone
+    if (phone) {
+      const existing = await db.select().from(customers).where(eq(customers.phone, phone));
+      const duplicate = existing.find(c => c.id !== customerId);
+      if (duplicate) {
+        return res.status(400).json({ error: "A customer with this phone number already exists." });
+      }
+    }
+
+    const parsedBirthday = birthday ? new Date(birthday) : null;
 
     await db.update(customers)
-      .set({ firstName, lastName, email, phone, status })
-      .where(eq(customers.id, parseInt(id)));
+      .set({ 
+        firstName, 
+        lastName, 
+        email: email || null, 
+        phone: phone || null, 
+        birthday: parsedBirthday,
+        favoriteCategory: favoriteCategory || null,
+        consentPromotions: consentPromotions !== undefined ? consentPromotions : false,
+        status 
+      })
+      .where(eq(customers.id, customerId));
 
     await logAudit(req, {
-      customerId: parseInt(id),
+      customerId: customerId,
       action: "CUSTOMER_UPDATED",
-      reason: `Admin updated customer profile settings: status set to '${status}'`
+      reason: `Profile settings update (Status: ${status || 'active'})`
     });
 
     return res.json({ success: true, message: "Customer profile updated." });
@@ -1308,6 +1340,139 @@ router.get("/audit-logs", authenticateToken, requirePermission("view_audit_logs"
     .limit(50);
 
     return res.json(list);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Roles List (For dropdown selection in staff management)
+router.get("/roles", authenticateToken, requirePermission("manage_staff"), async (req, res, next) => {
+  try {
+    const list = await db.select().from(roles).orderBy(roles.name);
+    return res.json(list);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Staff Management: List Staff Users
+router.get("/staff", authenticateToken, requirePermission("manage_staff"), async (req, res, next) => {
+  try {
+    const list = await db.select({
+      id: staffUsers.id,
+      name: staffUsers.name,
+      email: staffUsers.email,
+      roleId: staffUsers.roleId,
+      roleName: roles.name,
+      active: staffUsers.active,
+      createdAt: staffUsers.createdAt
+    })
+    .from(staffUsers)
+    .innerJoin(roles, eq(staffUsers.roleId, roles.id))
+    .orderBy(staffUsers.name);
+    
+    return res.json(list);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Staff Management: Create Staff User
+router.post("/staff", authenticateToken, requirePermission("manage_staff"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const schema = z.object({
+      name: z.string().min(2),
+      email: z.string().email(),
+      password: z.string().min(6),
+      pin: z.string().length(4).optional().or(z.literal("")),
+      roleId: z.number(),
+      active: z.boolean().default(true)
+    });
+    
+    const data = schema.parse(req.body);
+    
+    // Check existing email
+    const existing = await db.select().from(staffUsers).where(eq(staffUsers.email, data.email));
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "A staff member with this email already exists." });
+    }
+    
+    const passwordHash = bcrypt.hashSync(data.password, 10);
+    const pinHash = data.pin ? bcrypt.hashSync(data.pin, 10) : null;
+    
+    await db.insert(staffUsers).values({
+      name: data.name,
+      email: data.email,
+      passwordHash,
+      pinHash,
+      roleId: data.roleId,
+      active: data.active
+    });
+    
+    // Log in system audits
+    await logAudit(req, {
+      action: `Created staff member ${data.name} (${data.email})`,
+      reason: "Staff registration"
+    });
+    
+    return res.status(201).json({ message: "Staff user created successfully." });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Staff Management: Update Staff User
+router.patch("/staff/:id", authenticateToken, requirePermission("manage_staff"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const schema = z.object({
+      name: z.string().min(2).optional(),
+      email: z.string().email().optional(),
+      password: z.string().min(6).optional().or(z.literal("")),
+      pin: z.string().length(4).optional().or(z.literal("")),
+      roleId: z.number().optional(),
+      active: z.boolean().optional()
+    });
+    
+    const data = schema.parse(req.body);
+    
+    // Verify user exists
+    const existingList = await db.select().from(staffUsers).where(eq(staffUsers.id, id));
+    if (existingList.length === 0) {
+      return res.status(404).json({ error: "Staff user not found." });
+    }
+    const currentStaff = existingList[0];
+    
+    // Verify unique email if updated
+    if (data.email && data.email !== currentStaff.email) {
+      const uniqueCheck = await db.select().from(staffUsers).where(eq(staffUsers.email, data.email));
+      if (uniqueCheck.length > 0) {
+        return res.status(400).json({ error: "Email is already taken by another staff member." });
+      }
+    }
+    
+    const updateValues: any = {};
+    if (data.name !== undefined) updateValues.name = data.name;
+    if (data.email !== undefined) updateValues.email = data.email;
+    if (data.roleId !== undefined) updateValues.roleId = data.roleId;
+    if (data.active !== undefined) updateValues.active = data.active;
+    
+    if (data.password) {
+      updateValues.passwordHash = bcrypt.hashSync(data.password, 10);
+    }
+    if (data.pin !== undefined) {
+      updateValues.pinHash = data.pin ? bcrypt.hashSync(data.pin, 10) : null;
+    }
+    
+    await db.update(staffUsers).set(updateValues).where(eq(staffUsers.id, id));
+    
+    // Log in system audits
+    await logAudit(req, {
+      action: `Updated staff member ${currentStaff.name} (${currentStaff.email})`,
+      reason: "Staff profile edit"
+    });
+    
+    return res.json({ message: "Staff user updated successfully." });
   } catch (error) {
     next(error);
   }
