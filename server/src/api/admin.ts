@@ -733,7 +733,8 @@ router.post("/promotions", authenticateToken, requirePermission("manage_promotio
       endDate: z.string(),
       featured: z.boolean().default(false),
       doublePoints: z.boolean().default(false),
-      imageUrl: z.string().optional()
+      imageUrl: z.string().optional(),
+      linkedRewardId: z.number().nullable().optional()
     });
 
     const data = schema.parse(req.body);
@@ -770,7 +771,8 @@ router.patch("/promotions/:id", authenticateToken, requirePermission("manage_pro
       active: z.boolean().optional(),
       featured: z.boolean().optional(),
       doublePoints: z.boolean().optional(),
-      imageUrl: z.string().optional()
+      imageUrl: z.string().optional(),
+      linkedRewardId: z.number().nullable().optional()
     });
 
     const data = schema.parse(req.body);
@@ -787,6 +789,24 @@ router.patch("/promotions/:id", authenticateToken, requirePermission("manage_pro
     });
 
     return res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/promotions/:id", authenticateToken, requirePermission("manage_promotions"), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const pId = parseInt(id);
+
+    await db.delete(promotions).where(eq(promotions.id, pId));
+
+    await logAudit(req, {
+      action: "SETTINGS_CHANGED",
+      reason: `Deleted shop promotion ID ${pId}`
+    });
+
+    return res.json({ success: true, message: "Promotion deleted successfully." });
   } catch (error) {
     next(error);
   }

@@ -623,7 +623,8 @@ router.post("/promotions", auth_1.authenticateToken, (0, auth_1.requirePermissio
             endDate: zod_1.z.string(),
             featured: zod_1.z.boolean().default(false),
             doublePoints: zod_1.z.boolean().default(false),
-            imageUrl: zod_1.z.string().optional()
+            imageUrl: zod_1.z.string().optional(),
+            linkedRewardId: zod_1.z.number().nullable().optional()
         });
         const data = schema.parse(req.body);
         await db_1.db.insert(schema_1.promotions).values({
@@ -655,7 +656,8 @@ router.patch("/promotions/:id", auth_1.authenticateToken, (0, auth_1.requirePerm
             active: zod_1.z.boolean().optional(),
             featured: zod_1.z.boolean().optional(),
             doublePoints: zod_1.z.boolean().optional(),
-            imageUrl: zod_1.z.string().optional()
+            imageUrl: zod_1.z.string().optional(),
+            linkedRewardId: zod_1.z.number().nullable().optional()
         });
         const data = schema.parse(req.body);
         const updateData = { ...data };
@@ -669,6 +671,21 @@ router.patch("/promotions/:id", auth_1.authenticateToken, (0, auth_1.requirePerm
             reason: `Updated shop promotion ID ${pId}`
         });
         return res.json({ success: true });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+router.delete("/promotions/:id", auth_1.authenticateToken, (0, auth_1.requirePermission)("manage_promotions"), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const pId = parseInt(id);
+        await db_1.db.delete(schema_1.promotions).where((0, drizzle_orm_1.eq)(schema_1.promotions.id, pId));
+        await (0, audit_1.logAudit)(req, {
+            action: "SETTINGS_CHANGED",
+            reason: `Deleted shop promotion ID ${pId}`
+        });
+        return res.json({ success: true, message: "Promotion deleted successfully." });
     }
     catch (error) {
         next(error);

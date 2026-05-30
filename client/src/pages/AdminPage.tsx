@@ -48,12 +48,16 @@ export const AdminPage: React.FC = () => {
 
   // Form Modals states
   const [showAddRewardModal, setShowAddRewardModal] = useState(false);
+  const [showEditRewardModal, setShowEditRewardModal] = useState(false);
   const [showAddPromoModal, setShowAddPromoModal] = useState(false);
+  const [showEditPromoModal, setShowEditPromoModal] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showEditStaffModal, setShowEditStaffModal] = useState(false);
   const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+  const [selectedReward, setSelectedReward] = useState<any | null>(null);
+  const [selectedPromo, setSelectedPromo] = useState<any | null>(null);
 
   // Edit Customer Form State
   const [editCustFirstName, setEditCustFirstName] = useState("");
@@ -89,7 +93,7 @@ export const AdminPage: React.FC = () => {
   const [custFormError, setCustFormError] = useState<string | null>(null);
   const [custFormLoading, setCustFormLoading] = useState(false);
 
-  // Create Reward Form State
+  // Create/Edit Reward Form State
   const [rewardName, setRewardName] = useState("");
   const [rewardDescription, setRewardDescription] = useState("");
   const [rewardType, setRewardType] = useState("visit"); // "visit" | "spend" | "points"
@@ -98,10 +102,11 @@ export const AdminPage: React.FC = () => {
   const [rewardSpendRequired, setRewardSpendRequired] = useState("0.00");
   const [rewardHighValue, setRewardHighValue] = useState(false);
   const [rewardManagerApproval, setRewardManagerApproval] = useState(false);
+  const [rewardActive, setRewardActive] = useState(true);
   const [rewardFormError, setRewardFormError] = useState<string | null>(null);
   const [rewardFormLoading, setRewardFormLoading] = useState(false);
 
-  // Create Promotion Form State
+  // Create/Edit Promotion Form State
   const [promoTitle, setPromoTitle] = useState("");
   const [promoDescription, setPromoDescription] = useState("");
   const [promoAudienceType, setPromoAudienceType] = useState("all");
@@ -110,6 +115,9 @@ export const AdminPage: React.FC = () => {
   const [promoFeatured, setPromoFeatured] = useState(false);
   const [promoDoublePoints, setPromoDoublePoints] = useState(false);
   const [promoImageUrl, setPromoImageUrl] = useState("");
+  const [promoLinkedRewardId, setPromoLinkedRewardId] = useState<number | "">("");
+  const [editPromoLinkedRewardId, setEditPromoLinkedRewardId] = useState<number | "">("");
+  const [promoActive, setPromoActive] = useState(true);
   const [promoFormError, setPromoFormError] = useState<string | null>(null);
   const [promoFormLoading, setPromoFormLoading] = useState(false);
   
@@ -366,7 +374,8 @@ export const AdminPage: React.FC = () => {
         endDate: promoEndDate,
         featured: promoFeatured,
         doublePoints: promoDoublePoints,
-        imageUrl: promoImageUrl || undefined
+        imageUrl: promoImageUrl || undefined,
+        linkedRewardId: parseInt(promoLinkedRewardId.toString()) || null
       });
       setPromoTitle("");
       setPromoDescription("");
@@ -376,12 +385,136 @@ export const AdminPage: React.FC = () => {
       setPromoFeatured(false);
       setPromoDoublePoints(false);
       setPromoImageUrl("");
+      setPromoLinkedRewardId("");
       setShowAddPromoModal(false);
       loadOverviewMetrics();
     } catch (err: any) {
       setPromoFormError(err.response?.data?.error || "Failed to create promotion.");
     } finally {
       setPromoFormLoading(false);
+    }
+  };
+
+  const openEditRewardModal = (reward: any) => {
+    setSelectedReward(reward);
+    setRewardName(reward.name);
+    setRewardDescription(reward.description || "");
+    setRewardType(reward.rewardType);
+    setRewardPointsRequired(reward.pointsRequired.toString());
+    setRewardVisitsRequired(reward.visitsRequired.toString());
+    setRewardSpendRequired(parseFloat(reward.spendRequired).toFixed(2));
+    setRewardHighValue(reward.highValue);
+    setRewardManagerApproval(reward.managerApprovalRequired);
+    setRewardActive(reward.active);
+    setRewardFormError(null);
+    setShowEditRewardModal(true);
+  };
+
+  const handleEditReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReward) return;
+    setRewardFormError(null);
+    setRewardFormLoading(true);
+    try {
+      await apiClient.patch(`/api/admin/rewards/${selectedReward.id}`, {
+        name: rewardName,
+        description: rewardDescription || undefined,
+        rewardType,
+        pointsRequired: parseInt(rewardPointsRequired || "0"),
+        visitsRequired: parseInt(rewardVisitsRequired || "0"),
+        spendRequired: rewardSpendRequired || "0.00",
+        highValue: rewardHighValue,
+        managerApprovalRequired: rewardManagerApproval,
+        active: rewardActive
+      });
+      setRewardName("");
+      setRewardDescription("");
+      setRewardType("visit");
+      setRewardPointsRequired("0");
+      setRewardVisitsRequired("0");
+      setRewardSpendRequired("0.00");
+      setRewardHighValue(false);
+      setRewardManagerApproval(false);
+      setSelectedReward(null);
+      setShowEditRewardModal(false);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setRewardFormError(err.response?.data?.error || "Failed to update reward.");
+    } finally {
+      setRewardFormLoading(false);
+    }
+  };
+
+  const handleDeleteReward = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this loyalty reward?")) return;
+    try {
+      await apiClient.delete(`/api/admin/rewards/${id}`);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      alert("Failed to delete reward: " + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const openEditPromoModal = (promo: any) => {
+    setSelectedPromo(promo);
+    setPromoTitle(promo.title);
+    setPromoDescription(promo.description);
+    setPromoAudienceType(promo.audienceType || "all");
+    setPromoStartDate(promo.startDate ? promo.startDate.substring(0, 10) : "");
+    setPromoEndDate(promo.endDate ? promo.endDate.substring(0, 10) : "");
+    setPromoFeatured(promo.featured);
+    setPromoDoublePoints(promo.doublePoints);
+    setPromoImageUrl(promo.imageUrl || "");
+    setEditPromoLinkedRewardId(promo.linkedRewardId || "");
+    setPromoActive(promo.active);
+    setPromoFormError(null);
+    setShowEditPromoModal(true);
+  };
+
+  const handleEditPromotion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPromo) return;
+    setPromoFormError(null);
+    setPromoFormLoading(true);
+    try {
+      await apiClient.patch(`/api/admin/promotions/${selectedPromo.id}`, {
+        title: promoTitle,
+        description: promoDescription,
+        audienceType: promoAudienceType,
+        startDate: promoStartDate,
+        endDate: promoEndDate,
+        featured: promoFeatured,
+        doublePoints: promoDoublePoints,
+        imageUrl: promoImageUrl || undefined,
+        linkedRewardId: parseInt(editPromoLinkedRewardId.toString()) || null,
+        active: promoActive
+      });
+      setPromoTitle("");
+      setPromoDescription("");
+      setPromoAudienceType("all");
+      setPromoStartDate("");
+      setPromoEndDate("");
+      setPromoFeatured(false);
+      setPromoDoublePoints(false);
+      setPromoImageUrl("");
+      setEditPromoLinkedRewardId("");
+      setSelectedPromo(null);
+      setShowEditPromoModal(false);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      setPromoFormError(err.response?.data?.error || "Failed to update promotion.");
+    } finally {
+      setPromoFormLoading(false);
+    }
+  };
+
+  const handleDeletePromotion = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this promotion campaign?")) return;
+    try {
+      await apiClient.delete(`/api/admin/promotions/${id}`);
+      loadOverviewMetrics();
+    } catch (err: any) {
+      alert("Failed to delete promotion: " + (err.response?.data?.error || err.message));
     }
   };
 
@@ -867,7 +1000,8 @@ export const AdminPage: React.FC = () => {
                       <th className="py-3 px-4">Reward Name</th>
                       <th className="py-3 px-4">Requirement</th>
                       <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Approval Required</th>
+                      <th className="py-3 px-4 text-center">Approval Required</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-xs">
@@ -889,12 +1023,26 @@ export const AdminPage: React.FC = () => {
                             {r.active ? "ACTIVE" : "INACTIVE"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-4 text-center">
                           <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md ${
                             r.managerApprovalRequired ? "bg-red-50 text-brand-red border border-red-150" : "bg-gray-50 text-gray-400"
                           }`}>
                             {r.managerApprovalRequired ? "PIN Required" : "No"}
                           </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-3 text-nowrap">
+                          <button
+                            onClick={() => openEditRewardModal(r)}
+                            className="text-[10px] font-bold text-brand-charcoal hover:text-brand-red"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteReward(r.id)}
+                            className="text-[10px] font-bold text-brand-red hover:opacity-85"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -928,32 +1076,57 @@ export const AdminPage: React.FC = () => {
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100 text-[10px] font-extrabold uppercase text-gray-400 tracking-wider">
                       <th className="py-3 px-4">Promotion Campaign</th>
-                      <th className="py-3 px-4">Multiplier</th>
+                      <th className="py-3 px-4 text-nowrap">Campaign Duration</th>
+                      <th className="py-3 px-4">Type / Multiplier</th>
                       <th className="py-3 px-4">Audience</th>
-                      <th className="py-3 px-4 text-right">Active Status</th>
+                      <th className="py-3 px-4">Active Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-xs">
                     {promosList.map(p => (
-                      <tr key={p.id}>
-                        <td className="py-3.5 px-4">
-                          <p className="font-bold">{p.title}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">{p.description}</p>
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="py-3.5 px-4 max-w-[200px]">
+                          <p className="font-bold text-brand-charcoal truncate" title={p.title}>{p.title}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5 truncate" title={p.description}>{p.description}</p>
+                          {p.linkedRewardId && (
+                            <p className="text-[8px] text-brand-gold font-extrabold uppercase mt-1">
+                              🎁 Linked Reward ID: {p.linkedRewardId}
+                            </p>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-gray-500 font-medium text-[10px] text-nowrap">
+                          <div>Starts: {new Date(p.startDate).toLocaleDateString()}</div>
+                          <div>Ends: {new Date(p.endDate).toLocaleDateString()}</div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                            p.doublePoints ? "bg-brand-red text-white" : "bg-gray-100 text-gray-400"
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            p.doublePoints ? "bg-brand-red text-white" : "bg-gray-100 text-gray-450"
                           }`}>
                             {p.doublePoints ? "2X MULTIPLIER" : "1X Standard"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 font-bold capitalize">{p.audienceType}</td>
-                        <td className="py-3.5 px-4 text-right">
-                          <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                            p.active ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-gray-100 text-gray-400"
+                        <td className="py-3.5 px-4 font-bold capitalize text-gray-500">{p.audienceType}</td>
+                        <td className="py-3.5 px-4">
+                          <span className={`text-[8px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                            p.active ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-gray-50 text-gray-400 border border-gray-250"
                           }`}>
                             {p.active ? "LIVE" : "INACTIVE"}
                           </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-3 text-nowrap">
+                          <button
+                            onClick={() => openEditPromoModal(p)}
+                            className="text-[10px] font-bold text-brand-charcoal hover:text-brand-red"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeletePromotion(p.id)}
+                            className="text-[10px] font-bold text-brand-red hover:opacity-85"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1698,6 +1871,22 @@ export const AdminPage: React.FC = () => {
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Linked Loyalty Reward (Optional)</label>
+                <select 
+                  value={promoLinkedRewardId}
+                  onChange={(e) => setPromoLinkedRewardId(e.target.value === "" ? "" : parseInt(e.target.value))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                >
+                  <option value="">-- No Linked Reward --</option>
+                  {rewardsList.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.rewardType === 'points' ? `${r.pointsRequired} Pts` : r.rewardType === 'visit' ? `${r.visitsRequired} Visits` : `$${parseFloat(r.spendRequired).toFixed(0)} Spend`})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="flex items-center gap-2">
                   <input 
@@ -2128,6 +2317,344 @@ export const AdminPage: React.FC = () => {
                   className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
                 >
                   {staffFormLoading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 7: EDIT REWARD MODAL */}
+      {showEditRewardModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <PlusCircle className="w-5 h-5 text-brand-red" />
+                <span>Edit Loyalty Reward</span>
+              </h4>
+              <button 
+                onClick={() => { setShowEditRewardModal(false); setRewardFormError(null); setSelectedReward(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {rewardFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {rewardFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditReward} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Reward Name *</label>
+                <input 
+                  type="text" 
+                  value={rewardName}
+                  onChange={(e) => setRewardName(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. Free Small Fries"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Description (Optional)</label>
+                <textarea 
+                  value={rewardDescription}
+                  onChange={(e) => setRewardDescription(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="Details of the reward..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Threshold Type *</label>
+                  <select 
+                    value={rewardType}
+                    onChange={(e) => setRewardType(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  >
+                    <option value="visit">Visit Check-In Count</option>
+                    <option value="spend">Spend (USD) Amount</option>
+                    <option value="points">Points Cost Balance</option>
+                  </select>
+                </div>
+
+                {rewardType === "visit" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Visits Required</label>
+                    <input 
+                      type="number" 
+                      value={rewardVisitsRequired}
+                      onChange={(e) => setRewardVisitsRequired(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-brand-charcoal"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {rewardType === "spend" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Spend Required ($)</label>
+                    <input 
+                      type="text" 
+                      value={rewardSpendRequired}
+                      onChange={(e) => setRewardSpendRequired(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-brand-charcoal"
+                      placeholder="0.00"
+                    />
+                  </div>
+                )}
+
+                {rewardType === "points" && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase">Points Cost</label>
+                    <input 
+                      type="number" 
+                      value={rewardPointsRequired}
+                      onChange={(e) => setRewardPointsRequired(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-bold text-brand-charcoal"
+                      min="0"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="editRewardHighValueCheck"
+                    checked={rewardHighValue}
+                    onChange={(e) => setRewardHighValue(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="editRewardHighValueCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    High Value Flag
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="editRewardApprovalCheck"
+                    checked={rewardManagerApproval}
+                    onChange={(e) => setRewardManagerApproval(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="editRewardApprovalCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Requires Manager PIN
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 pb-2">
+                <input 
+                  type="checkbox" 
+                  id="editRewardActiveCheck"
+                  checked={rewardActive}
+                  onChange={(e) => setRewardActive(e.target.checked)}
+                  className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                />
+                <label htmlFor="editRewardActiveCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                  Reward Active & Redeemable
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowEditRewardModal(false); setRewardFormError(null); setSelectedReward(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={rewardFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {rewardFormLoading ? "Saving..." : "Save Reward"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 8: EDIT PROMOTION MODAL */}
+      {showEditPromoModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 text-brand-charcoal">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h4 className="text-base font-black uppercase tracking-wider text-brand-red flex items-center gap-1.5">
+                <PlusCircle className="w-5 h-5 text-brand-red" />
+                <span>Edit Shop Promotion</span>
+              </h4>
+              <button 
+                onClick={() => { setShowEditPromoModal(false); setPromoFormError(null); setSelectedPromo(null); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {promoFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
+                ⚠️ {promoFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditPromotion} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Promotion Title *</label>
+                <input 
+                  type="text" 
+                  value={promoTitle}
+                  onChange={(e) => setPromoTitle(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="e.g. Double Points Friday"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Description *</label>
+                <textarea 
+                  value={promoDescription}
+                  onChange={(e) => setPromoDescription(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  placeholder="Special details and rules..."
+                  rows={2}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Start Date *</label>
+                  <input 
+                    type="date" 
+                    value={promoStartDate}
+                    onChange={(e) => setPromoStartDate(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">End Date *</label>
+                  <input 
+                    type="date" 
+                    value={promoEndDate}
+                    onChange={(e) => setPromoEndDate(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-1.5 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Audience Scope</label>
+                  <select 
+                    value={promoAudienceType}
+                    onChange={(e) => setPromoAudienceType(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                  >
+                    <option value="all">All Members</option>
+                    <option value="rookie">Rookies Only</option>
+                    <option value="boss">PIT Bosses Only</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase">Image Banner URL (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={promoImageUrl}
+                    onChange={(e) => setPromoImageUrl(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">Linked Loyalty Reward (Optional)</label>
+                <select 
+                  value={editPromoLinkedRewardId}
+                  onChange={(e) => setEditPromoLinkedRewardId(e.target.value === "" ? "" : parseInt(e.target.value))}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-xs font-medium focus:outline-none focus:border-brand-red text-brand-charcoal"
+                >
+                  <option value="">-- No Linked Reward --</option>
+                  {rewardsList.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.rewardType === 'points' ? `${r.pointsRequired} Pts` : r.rewardType === 'visit' ? `${r.visitsRequired} Visits` : `$${parseFloat(r.spendRequired).toFixed(0)} Spend`})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="editFeaturedPromo"
+                    checked={promoFeatured}
+                    onChange={(e) => setPromoFeatured(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="editFeaturedPromo" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Featured Banner
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    id="editDoublePointsPromo"
+                    checked={promoDoublePoints}
+                    onChange={(e) => setPromoDoublePoints(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                  />
+                  <label htmlFor="editDoublePointsPromo" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                    Trigger Double Points (2x)
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 pb-2">
+                <input 
+                  type="checkbox" 
+                  id="editPromoActiveCheck"
+                  checked={promoActive}
+                  onChange={(e) => setPromoActive(e.target.checked)}
+                  className="w-4 h-4 rounded text-brand-red focus:ring-brand-red"
+                />
+                <label htmlFor="editPromoActiveCheck" className="text-[10px] font-bold text-gray-600 cursor-pointer">
+                  Promotion Active / Live
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button 
+                  type="button"
+                  onClick={() => { setShowEditPromoModal(false); setPromoFormError(null); setSelectedPromo(null); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl text-xs font-bold text-gray-600 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={promoFormLoading}
+                  className="flex-1 bg-brand-red hover:bg-brand-red/95 py-3 rounded-xl text-xs font-black uppercase text-white transition-all shadow"
+                >
+                  {promoFormLoading ? "Saving..." : "Save Promotion"}
                 </button>
               </div>
             </form>
