@@ -23,7 +23,7 @@ import {
   settings 
 } from "../db/schema";
 import { eq, and, desc, sql, like, or } from "drizzle-orm";
-import { AuthenticatedRequest, authenticateToken, requireRole, requirePermission } from "../middleware/auth";
+import { AuthenticatedRequest, authenticateToken, requireRole, requirePermission, requirePasswordAuth } from "../middleware/auth";
 import bcrypt from "bcryptjs";
 import { logAudit } from "../utils/audit";
 import { loyverseClient } from "../integrations/loyverse/loyverseClient";
@@ -31,6 +31,10 @@ import { updateCustomerTier } from "./tablet";
 import { z } from "zod";
 
 const router = Router();
+
+// Globally enforce standard email/password authentication (block PIN logins) for all Admin routes
+router.use(authenticateToken);
+router.use(requirePasswordAuth);
 
 // Helper: Pull general system settings as key-value map
 const getSystemSettings = async (): Promise<Record<string, string>> => {

@@ -14,6 +14,7 @@ export interface AuthenticatedRequest extends Request {
     role: string;
     roleId: number;
     permissions: string[];
+    authMethod?: "pin" | "password";
   };
 }
 
@@ -48,13 +49,30 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
       email: decoded.email,
       role: decoded.role,
       roleId: decoded.roleId,
-      permissions: decoded.permissions || []
+      permissions: decoded.permissions || [],
+      authMethod: decoded.authMethod || "password"
     };
     
     next();
   } catch (error) {
     return res.status(403).json({ error: "Invalid or expired token." });
   }
+};
+
+// 1.5 Require Password Authentication Middleware (Block PIN logins from accessing Admin portal)
+export const requirePasswordAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentication required." });
+  }
+
+  if (req.user.authMethod === "pin") {
+    return res.status(403).json({ 
+      error: "FULL_AUTH_REQUIRED", 
+      message: "Full email & password login is required to access the Admin Dashboard." 
+    });
+  }
+
+  next();
 };
 
 // 2. Require Specific Role Middleware

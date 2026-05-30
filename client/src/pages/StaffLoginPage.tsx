@@ -56,14 +56,8 @@ export const StaffLoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const data = await loginStaffWithPin(pin);
-      const role = data.user?.role;
-
-      if (role === "Administrator") {
-        navigate("/admin");
-      } else {
-        navigate("/tablet");
-      }
+      await loginStaffWithPin(pin);
+      navigate("/tablet"); // PIN login strictly launches Counter Tablet mode!
     } catch (e: any) {
       setError(e.response?.data?.error || "Invalid PIN code. Please try again.");
       setPin(""); // Reset PIN on error

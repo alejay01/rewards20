@@ -18,6 +18,8 @@ export const AdminPage: React.FC = () => {
       navigate("/staff/login");
     } else if (staffUser.role !== "Administrator" && staffUser.role !== "Manager") {
       navigate("/tablet"); // Enforce role redirect
+    } else if (staffUser.authMethod === "pin") {
+      navigate("/tablet"); // Enforce password-only auth for sensitive admin dashboard
     }
   }, [staffUser, navigate]);
 

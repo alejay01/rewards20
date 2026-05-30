@@ -17,6 +17,9 @@ const loyverseClient_1 = require("../integrations/loyverse/loyverseClient");
 const tablet_1 = require("./tablet");
 const zod_1 = require("zod");
 const router = (0, express_1.Router)();
+// Globally enforce standard email/password authentication (block PIN logins) for all Admin routes
+router.use(auth_1.authenticateToken);
+router.use(auth_1.requirePasswordAuth);
 // Helper: Pull general system settings as key-value map
 const getSystemSettings = async () => {
     const dbSettings = await db_1.db.select().from(schema_1.settings);

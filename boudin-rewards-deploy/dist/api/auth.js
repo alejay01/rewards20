@@ -59,7 +59,8 @@ router.post("/login", loginLimiter, async (req, res, next) => {
             email: user.email,
             role: roleName,
             roleId: user.roleId,
-            permissions: permissionsArray
+            permissions: permissionsArray,
+            authMethod: "password"
         }, JWT_SECRET, { expiresIn: "8h" });
         // Set secure HTTP-only cookie
         res.cookie("token", token, {
@@ -80,7 +81,8 @@ router.post("/login", loginLimiter, async (req, res, next) => {
                 name: user.name,
                 email: user.email,
                 role: roleName,
-                permissions: permissionsArray
+                permissions: permissionsArray,
+                authMethod: "password"
             }
         });
     }
@@ -135,7 +137,8 @@ router.post("/pin-login", pinLoginLimiter, async (req, res, next) => {
             email: user.email,
             role: roleName,
             roleId: user.roleId,
-            permissions: permissionsArray
+            permissions: permissionsArray,
+            authMethod: "pin"
         }, JWT_SECRET, { expiresIn: "8h" });
         // Set secure HTTP-only cookie
         res.cookie("token", token, {
@@ -156,7 +159,8 @@ router.post("/pin-login", pinLoginLimiter, async (req, res, next) => {
                 name: user.name,
                 email: user.email,
                 role: roleName,
-                permissions: permissionsArray
+                permissions: permissionsArray,
+                authMethod: "pin"
             }
         });
     }
