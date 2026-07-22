@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: boudin-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: boudin-password
+      MYSQL_DATABASE: rewards20
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  app:
+    build: .
+    container_name: boudin-app
+    restart: on-failure
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://root:boudin-password@db:3306/rewards20
+      SESSION_SECRET: boudin-boss-rewards-session-secret-key-2026!
+      JWT_SECRET: boudin-boss-rewards-secret-key-2026!
+      QR_TOKEN_SECRET: boudin-boss-rewards-qr-cryptography-key-2026!
+      APP_URL: http://localhost:3000
+      CLIENT_URL: http://localhost:3000
+    depends_on:
+      - db
+
+volumes:
+  db_data:
