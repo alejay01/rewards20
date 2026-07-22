@@ -1,4 +1,12 @@
-# The Boudin Company Rewards — Boudin Boss Rewards MVP
+# Boudin Rewards 7-22
+
+Boudin Rewards 7-22 is the evolving platform/repository identity. The Boudin Company remains the first tenant and customer-facing brand.
+
+- [Product capability map and roadmap](docs/PRODUCT-ROADMAP.md)
+- [Twilio and Hostinger deployment guide](docs/TWILIO-HOSTINGER.md)
+
+---
+# The Boudin Company Rewards ??? Boudin Boss Rewards MVP
 
 Welcome to the official source code for **Boudin Boss Rewards**, a complete, mobile-first, and tablet-friendly PWA loyalty and rewards MVP built exclusively for **The Boudin Company** in Rosenberg, Texas.
 
@@ -6,7 +14,7 @@ This rewards platform is designed to function 100% independently using a high-pe
 
 ---
 
-## 🍽️ Technical Architecture
+## ??????? Technical Architecture
 
 This application uses a **Monolithic Single-Port Architecture** specifically optimized for shared hosting environments. The Express backend handles REST API routes under `/api/*` and serving static client files for everything else, making deployment extremely simple and robust.
 
@@ -18,7 +26,7 @@ This application uses a **Monolithic Single-Port Architecture** specifically opt
 
 ---
 
-## 🚀 Quick Start — Local Development
+## ???? Quick Start ??? Local Development
 
 ### 1. Prerequisites
 - **Node.js** (v18.x or v20.x recommended)
@@ -64,7 +72,7 @@ Open **http://localhost:3000/health** to verify the Express server is connected 
 
 ---
 
-## 🧑‍🍳 Seeded Demo Logins & Access
+## ??????????? Seeded Demo Logins & Access
 
 Use these credentials to test role-based access control inside the **Staff Portal** (`/staff/login`):
 
@@ -76,17 +84,17 @@ Use these credentials to test role-based access control inside the **Staff Porta
 
 ### Seeded Cajun Customers (Testing Tokens)
 Copy-paste these QR check-in tokens directly in **Counter Tablet Mode** (`/tablet`) to test lookup and check-in overrides:
-- `token_remy_boss_55` — **Remy Lebeau** (Boudin Boss Tier, 340 PTS, 22 Visits)
-- `token_clotile_bayou_88` — **Clotile Hebert** (Bayou Buddy Tier, 35 PTS, 3 Visits)
-- `token_alphonse_regular_77` — **Alphonse Robichaux** (Boudin Regular Tier, 62 PTS)
+- `token_remy_boss_55` ??? **Remy Lebeau** (Boudin Boss Tier, 340 PTS, 22 Visits)
+- `token_clotile_bayou_88` ??? **Clotile Hebert** (Bayou Buddy Tier, 35 PTS, 3 Visits)
+- `token_alphonse_regular_77` ??? **Alphonse Robichaux** (Boudin Regular Tier, 62 PTS)
 
 ---
 
-## ☁️ Deploying on Hostinger Web Hosting — Non-VPS Only
+## ?????? Deploying on Hostinger Web Hosting ??? Non-VPS Only
 
 Hostinger's shared web hosting supports Node.js applications natively through **hPanel** without requiring a virtual private server (VPS). This guide details the complete deployment process step-by-step.
 
-### ⚠️ Critical Constraints
+### ?????? Critical Constraints
 > [!IMPORTANT]
 > **No Docker or Root Daemons**: Hostinger shared hosting runs inside a shared Passenger environment. You **cannot** use Docker containerizing, PostgreSQL native system installations, MongoDB daemon services, Redis servers, PM2 background creation scripts, or systemctl Linux commands. This codebase is fully engineered to run as a **single-process Express monolithic app** which avoids all these limitations!
 
@@ -201,7 +209,7 @@ To run database schema migrations and insert seed records on the Hostinger serve
 
 ---
 
-## 🎨 Design Customization Guide
+## ???? Design Customization Guide
 
 If you wish to change visual asset placeholders (visual photos, banners, and logos):
 1. Prepare high-resolution PNG or JPG assets with matching filenames.
@@ -216,7 +224,7 @@ If you wish to change visual asset placeholders (visual photos, banners, and log
 
 ---
 
-## 🛠️ Verification & Troubleshooting
+## ??????? Verification & Troubleshooting
 
 ### Database Connection Failure
 - **Error**: `ECONNREFUSED` or `Unknown database...`

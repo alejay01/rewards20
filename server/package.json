@@ -4,7 +4,8 @@
   "description": "Express backend for Boudin Boss Rewards",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && npm run copy-public",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc && npm run copy-public",
     "copy-public": "node -e \"const fs = require('fs'); if (fs.existsSync('public')) { fs.cpSync('public', 'dist/public', { recursive: true }); }\"",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",

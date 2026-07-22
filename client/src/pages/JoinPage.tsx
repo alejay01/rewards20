@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Flame, Sparkles, User, Mail, Phone, Calendar, Heart, ShieldCheck, ArrowLeftRight } from "lucide-react";
 
@@ -19,6 +19,7 @@ export const JoinPage: React.FC = () => {
   const [birthday, setBirthday] = useState("");
   const [favoriteCategory, setFavoriteCategory] = useState("Boudin Links");
   const [consentPromotions, setConsentPromotions] = useState(false);
+  const [smsMarketingConsent, setSmsMarketingConsent] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Lookup state
@@ -51,7 +52,8 @@ export const JoinPage: React.FC = () => {
         phone: phone || undefined,
         birthday: birthday || undefined,
         favoriteCategory: favoriteCategory || undefined,
-        consentPromotions
+        consentPromotions,
+        smsMarketingConsent
       });
       setSuccess(true);
       setTimeout(() => {
@@ -156,7 +158,7 @@ export const JoinPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[10px] font-extrabold text-gray-500 uppercase mb-1">Phone Number (No SMS)</label>
+            <label className="block text-[10px] font-extrabold text-gray-500 uppercase mb-1">Mobile Phone Number</label>
             <div className="relative">
               <input 
                 type="tel" 
@@ -167,7 +169,7 @@ export const JoinPage: React.FC = () => {
               />
               <Phone className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" />
             </div>
-            <p className="text-[9px] text-gray-400 mt-0.5">Used strictly for cashier counter lookups. We never send SMS.</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">Used for account lookup and, only if you opt in below, rewards texts.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -205,6 +207,16 @@ export const JoinPage: React.FC = () => {
 
           <div className="space-y-2 pt-2">
             <label className="flex items-start gap-2.5 text-xs text-gray-600 font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={smsMarketingConsent}
+                onChange={(e) => setSmsMarketingConsent(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-brand-red focus:ring-brand-red w-3.5 h-3.5"
+              />
+              <span>I agree to receive recurring automated rewards and marketing texts from The Boudin Company/Boudin Rewards at the mobile number provided. Consent is not a condition of purchase. Message frequency varies; message and data rates may apply. Reply STOP to unsubscribe or HELP for help. View the <Link className="font-bold text-brand-red underline" to="/sms-terms" target="_blank">SMS Terms</Link> and <Link className="font-bold text-brand-red underline" to="/privacy" target="_blank">Privacy Policy</Link>.</span>
+            </label>
+
+            <label className="flex items-start gap-2.5 text-xs text-gray-600 font-medium cursor-pointer">
               <input 
                 type="checkbox" 
                 checked={consentPromotions}
@@ -222,7 +234,7 @@ export const JoinPage: React.FC = () => {
                 className="mt-0.5 rounded border-gray-300 text-brand-red focus:ring-brand-red w-3.5 h-3.5"
                 required
               />
-              <span>I agree to The Boudin Company Rewards Terms & Privacy Policy.</span>
+              <span>I agree to the program rules and The Boudin Company <Link className="font-bold text-brand-red underline" to="/privacy" target="_blank">Privacy Policy</Link>.</span>
             </label>
           </div>
 

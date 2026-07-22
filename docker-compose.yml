@@ -1,24 +1,27 @@
-version: '3.8'
-
 services:
   db:
     image: mysql:8.0
-    container_name: boudin-db
+    container_name: boudin-rewards-722-db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: boudin-password
       MYSQL_DATABASE: rewards20
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pboudin-password"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   app:
     build: .
-    container_name: boudin-app
+    container_name: boudin-rewards-722-app
     restart: on-failure
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -26,10 +29,22 @@ services:
       SESSION_SECRET: boudin-boss-rewards-session-secret-key-2026!
       JWT_SECRET: boudin-boss-rewards-secret-key-2026!
       QR_TOKEN_SECRET: boudin-boss-rewards-qr-cryptography-key-2026!
-      APP_URL: http://localhost:3000
-      CLIENT_URL: http://localhost:3000
+      APP_URL: http://localhost:3001
+      CLIENT_URL: http://localhost:3001
+      SMS_DRY_RUN: "true"
+      TWILIO_VALIDATE_SIGNATURES: "false"
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_MESSAGING_SERVICE_SID: ${TWILIO_MESSAGING_SERVICE_SID:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      TWILIO_WEBHOOK_BASE_URL: ${TWILIO_WEBHOOK_BASE_URL:-}
+      SMS_MAX_RECIPIENTS_PER_RUN: "50"
+      SMS_TIMEZONE: America/Chicago
+      SMS_SEND_WINDOW_START: "9"
+      SMS_SEND_WINDOW_END: "20"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:

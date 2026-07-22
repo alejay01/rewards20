@@ -7,6 +7,7 @@ import {
   Check, X, ShieldAlert, Key, HelpCircle, PlusCircle
 } from "lucide-react";
 import axios from "axios";
+import { SmsCampaignPanel } from "../components/SmsCampaignPanel";
 
 export const AdminPage: React.FC = () => {
   const { staffUser, logoutStaff, apiClient, loading: authLoading } = useAuth();
@@ -26,7 +27,7 @@ export const AdminPage: React.FC = () => {
   }, [staffUser, authLoading, navigate]);
 
   // States
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "customers" | "rewards" | "promotions" | "claims" | "loyverse" | "security" | "pwa" | "audits" | "staff">("overview");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "customers" | "rewards" | "promotions" | "sms" | "claims" | "loyverse" | "security" | "pwa" | "audits" | "staff">("overview");
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<any>(null);
   
@@ -704,8 +705,8 @@ export const AdminPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Flame className="w-6 h-6 text-brand-red fill-brand-red animate-pulse" />
           <div>
-            <h1 className="text-md font-black tracking-wider uppercase">Boudin Boss Admin Portal</h1>
-            <p className="text-[10px] text-gray-400 font-bold">Store Dashboard • {staffUser.name} ({staffUser.role})</p>
+            <h1 className="text-md font-black tracking-wider uppercase">Boudin Rewards 7-22</h1>
+            <p className="text-[10px] text-gray-400 font-bold">Store Dashboard ??? {staffUser.name} ({staffUser.role})</p>
           </div>
         </div>
 
@@ -736,6 +737,7 @@ export const AdminPage: React.FC = () => {
             { id: "customers", label: "Customer List", icon: <Users className="w-4 h-4" /> },
             { id: "rewards", label: "Loyalty Rewards", icon: <Award className="w-4 h-4" /> },
             { id: "promotions", label: "Specials/Promos", icon: <Flame className="w-4 h-4" /> },
+            { id: "sms", label: "SMS Campaigns", icon: <Zap className="w-4 h-4" /> },
             { id: "claims", label: "Receipt Claims", icon: <FileText className="w-4 h-4" /> },
             { id: "loyverse", label: "Loyverse Sync", icon: <Settings className="w-4 h-4" /> },
             // Security tab temporarily hidden as requested
@@ -768,7 +770,7 @@ export const AdminPage: React.FC = () => {
               <div className="flex items-center gap-3 relative z-10">
                 <ShieldAlert className="w-6 h-6 text-white animate-bounce shrink-0" />
                 <div>
-                  <h4 className="font-extrabold text-sm uppercase tracking-wider">⚠️ Security Alert! Unrecognized Devices Detected</h4>
+                  <h4 className="font-extrabold text-sm uppercase tracking-wider">?????? Security Alert! Unrecognized Devices Detected</h4>
                   <p className="text-[10px] text-red-100 font-bold mt-0.5 leading-snug">
                     {pendingDevicesCount} Non-Boudin Company devices have attempted to access the cashier portals. Please audit and approve them immediately.
                   </p>
@@ -1259,7 +1261,7 @@ export const AdminPage: React.FC = () => {
                           <p className="text-[10px] text-gray-400 mt-0.5 truncate" title={p.description}>{p.description}</p>
                           {p.linkedRewardId && (
                             <p className="text-[8px] text-brand-gold font-extrabold uppercase mt-1">
-                              🎁 Linked Reward ID: {p.linkedRewardId}
+                              ???? Linked Reward ID: {p.linkedRewardId}
                             </p>
                           )}
                         </td>
@@ -1303,6 +1305,11 @@ export const AdminPage: React.FC = () => {
               </div>
 
             </div>
+          )}
+
+          {/* TAB 5: TWILIO SMS CAMPAIGNS */}
+          {activeSubTab === "sms" && (
+            <SmsCampaignPanel apiClient={apiClient} />
           )}
 
           {/* TAB 5: RECEIPT CLAIMS REVIEW */}
@@ -1409,7 +1416,7 @@ export const AdminPage: React.FC = () => {
 
                 {syncMessage && (
                   <div className="bg-brand-light p-3 rounded-2xl border text-xs font-bold text-brand-red">
-                    ℹ️ Status Alert: {syncMessage}
+                    ?????? Status Alert: {syncMessage}
                   </div>
                 )}
 
@@ -1601,7 +1608,7 @@ export const AdminPage: React.FC = () => {
                       {filteredAudits.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="py-12 text-center text-gray-400 font-bold">
-                            ⚠️ No audit logs match your search and filter criteria.
+                            ?????? No audit logs match your search and filter criteria.
                           </td>
                         </tr>
                       ) : (
@@ -1772,7 +1779,7 @@ export const AdminPage: React.FC = () => {
                             <td className="py-3 px-4 font-bold">
                               <div>
                                 <p className="font-bold text-xs">{dev.deviceName}</p>
-                                <p className="text-[9px] text-gray-400 font-medium">{dev.operatingSystem} • {dev.browserName} • {dev.deviceType}</p>
+                                <p className="text-[9px] text-gray-400 font-medium">{dev.operatingSystem} ??? {dev.browserName} ??? {dev.deviceType}</p>
                               </div>
                             </td>
                             <td className="py-3 px-4 font-mono text-[9px] text-gray-400">
@@ -1800,7 +1807,7 @@ export const AdminPage: React.FC = () => {
                                   rel="noopener noreferrer"
                                   className="text-brand-red font-bold hover:underline flex items-center gap-0.5"
                                 >
-                                  📍 Link
+                                  ???? Link
                                 </a>
                               ) : (
                                 <span className="text-gray-400 text-[9px]">No Coordinates</span>
@@ -1961,15 +1968,15 @@ export const AdminPage: React.FC = () => {
                     </p>
                     <ul className="text-[9px] space-y-2 text-gray-400 font-medium pl-1">
                       <li className="flex items-start gap-1.5">
-                        <span className="text-brand-red">🔥</span>
+                        <span className="text-brand-red">????</span>
                         <span><strong>Starting Gift Balance:</strong> New guests automatically credit <strong>150 PTS</strong> to redeem their Free Boudin Ball.</span>
                       </li>
                       <li className="flex items-start gap-1.5">
-                        <span className="text-brand-red">🔥</span>
+                        <span className="text-brand-red">????</span>
                         <span><strong>Starting Tier Status:</strong> Set automatically to <strong>Rookie Roller</strong> with 0 initial visits check-ins.</span>
                       </li>
                       <li className="flex items-start gap-1.5">
-                        <span className="text-brand-red">🔥</span>
+                        <span className="text-brand-red">????</span>
                         <span><strong>Double Points Campaigns:</strong> Dynamic 2X markers automatically apply to linked specials on their portal.</span>
                       </li>
                     </ul>
@@ -1979,7 +1986,7 @@ export const AdminPage: React.FC = () => {
                 {/* RIGHT COLUMN: LIVE CUSTOMER ACCESS PORTAL PREVIEW */}
                 <div className="space-y-4 flex flex-col items-center">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                    <span>📱</span> Real-Time Customer Portal Preview (New Signup Status)
+                    <span>????</span> Real-Time Customer Portal Preview (New Signup Status)
                   </span>
                   
                   {/* PHONE FRAME MOCKUP */}
@@ -2036,7 +2043,7 @@ export const AdminPage: React.FC = () => {
                           </div>
 
                           <div className="w-full bg-brand-red text-center text-[9px] font-black py-1.5 rounded-lg uppercase tracking-wider opacity-90 shadow-sm flex items-center justify-center gap-1 cursor-pointer">
-                            <span>🎫 Show My QR Code</span>
+                            <span>???? Show My QR Code</span>
                           </div>
                         </div>
                       </div>
@@ -2045,7 +2052,7 @@ export const AdminPage: React.FC = () => {
                       <div className="bg-white border border-gray-100 rounded-2xl p-3.5 shadow-sm space-y-2.5 border-solid">
                         <div className="flex gap-2.5 items-center">
                           <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-red-600 to-red-800 flex items-center justify-center text-lg shadow">
-                            👑
+                            ????
                           </div>
                           <div>
                             <div className="flex items-center gap-1">
@@ -2066,7 +2073,7 @@ export const AdminPage: React.FC = () => {
                             <div className="bg-brand-red h-full rounded-full w-0"></div>
                           </div>
                           <p className="text-[8px] text-gray-400 leading-tight font-medium">
-                            “Just 10 more visits to unlock Bayou Buddy!”
+                            ???Just 10 more visits to unlock Bayou Buddy!???
                           </p>
                         </div>
                       </div>
@@ -2228,7 +2235,7 @@ export const AdminPage: React.FC = () => {
 
             {custFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {custFormError}
+                ?????? {custFormError}
               </div>
             )}
 
@@ -2370,7 +2377,7 @@ export const AdminPage: React.FC = () => {
 
             {rewardFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {rewardFormError}
+                ?????? {rewardFormError}
               </div>
             )}
 
@@ -2520,7 +2527,7 @@ export const AdminPage: React.FC = () => {
 
             {promoFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {promoFormError}
+                ?????? {promoFormError}
               </div>
             )}
 
@@ -2682,7 +2689,7 @@ export const AdminPage: React.FC = () => {
 
             {editCustFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {editCustFormError}
+                ?????? {editCustFormError}
               </div>
             )}
 
@@ -2825,7 +2832,7 @@ export const AdminPage: React.FC = () => {
 
             {staffFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {staffFormError}
+                ?????? {staffFormError}
               </div>
             )}
 
@@ -2948,7 +2955,7 @@ export const AdminPage: React.FC = () => {
 
             {staffFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {staffFormError}
+                ?????? {staffFormError}
               </div>
             )}
 
@@ -3070,7 +3077,7 @@ export const AdminPage: React.FC = () => {
 
             {rewardFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {rewardFormError}
+                ?????? {rewardFormError}
               </div>
             )}
 
@@ -3233,7 +3240,7 @@ export const AdminPage: React.FC = () => {
 
             {promoFormError && (
               <div className="bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-xl p-3">
-                ⚠️ {promoFormError}
+                ?????? {promoFormError}
               </div>
             )}
 

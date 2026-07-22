@@ -53,10 +53,14 @@ const joinSchema = zod_1.z.object({
     phone: zod_1.z.string().optional().or(zod_1.z.literal("")),
     birthday: zod_1.z.string().optional().or(zod_1.z.literal("")),
     favoriteCategory: zod_1.z.string().optional().or(zod_1.z.literal("")),
-    consentPromotions: zod_1.z.boolean().default(false)
+    consentPromotions: zod_1.z.boolean().default(false),
+    smsMarketingConsent: zod_1.z.boolean().default(false)
 }).refine(data => data.email || data.phone, {
     message: "Either Email or Phone Number must be provided to join.",
     path: ["email"]
+}).refine(data => !data.smsMarketingConsent || Boolean(data.phone), {
+    message: "A mobile phone number is required to opt in to SMS.",
+    path: ["phone"]
 });
 router.post("/join", async (req, res, next) => {
     try {
@@ -91,6 +95,10 @@ router.post("/join", async (req, res, next) => {
             birthday: data.birthday ? new Date(data.birthday) : null,
             favoriteCategory: data.favoriteCategory || null,
             consentPromotions: data.consentPromotions,
+            smsMarketingConsent: data.smsMarketingConsent,
+            smsConsentAt: data.smsMarketingConsent ? new Date() : null,
+            smsConsentSource: data.smsMarketingConsent ? "customer-signup-web" : null,
+            smsOptOutAt: null,
             status: "active"
         });
         const newCustomers = await db_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.publicId, publicId));
@@ -241,7 +249,11 @@ router.get("/me", exports.authenticateCustomer, async (req, res, next) => {
                 phone: customer.phone,
                 birthday: customer.birthday,
                 favoriteCategory: customer.favoriteCategory,
-                consentPromotions: customer.consentPromotions
+                consentPromotions: customer.consentPromotions,
+                smsMarketingConsent: customer.smsMarketingConsent,
+                smsConsentAt: customer.smsConsentAt,
+                smsConsentSource: customer.smsConsentSource,
+                smsOptOutAt: customer.smsOptOutAt
             },
             loyalty: {
                 rewardsNumber: account.rewardsNumber,
@@ -277,12 +289,25 @@ router.patch("/me", exports.authenticateCustomer, async (req, res, next) => {
             lastName: zod_1.z.string().min(2).optional(),
             birthday: zod_1.z.string().optional(),
             favoriteCategory: zod_1.z.string().optional(),
-            consentPromotions: zod_1.z.boolean().optional()
+            consentPromotions: zod_1.z.boolean().optional(),
+            smsMarketingConsent: zod_1.z.boolean().optional()
         });
         const data = updateSchema.parse(req.body);
         const updateData = { ...data };
         if (data.birthday) {
             updateData.birthday = new Date(data.birthday);
+        }
+        if (data.smsMarketingConsent === true) {
+            const current = await db_1.db.select().from(schema_1.customers).where((0, drizzle_orm_1.eq)(schema_1.customers.id, req.customer.id));
+            if (!current[0]?.phone) {
+                return res.status(400).json({ error: "Add a mobile phone number before opting in to SMS." });
+            }
+            updateData.smsConsentAt = new Date();
+            updateData.smsConsentSource = "customer-profile-web";
+            updateData.smsOptOutAt = null;
+        }
+        else if (data.smsMarketingConsent === false) {
+            updateData.smsOptOutAt = new Date();
         }
         await db_1.db.update(schema_1.customers)
             .set(updateData)

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authorizedDevicesRelations = exports.authorizedDevices = exports.rewardRedemptionsRelations = exports.purchasesRelations = exports.visitsRelations = exports.loyaltyAccountRelations = exports.customerRelations = exports.rolePermissionsRelations = exports.staffUsersRelations = exports.settings = exports.tabletSessions = exports.auditLogs = exports.integrationLogs = exports.loyverseReceipts = exports.loyverseCustomers = exports.receiptClaims = exports.qrTokens = exports.promotions = exports.rewardRedemptions = exports.rewards = exports.pointsLedger = exports.purchases = exports.visits = exports.tiers = exports.loyaltyAccounts = exports.customers = exports.staffUsers = exports.rolePermissions = exports.permissions = exports.roles = void 0;
+exports.authorizedDevicesRelations = exports.authorizedDevices = exports.rewardRedemptionsRelations = exports.purchasesRelations = exports.visitsRelations = exports.loyaltyAccountRelations = exports.customerRelations = exports.rolePermissionsRelations = exports.staffUsersRelations = exports.smsMessages = exports.smsCampaigns = exports.settings = exports.tabletSessions = exports.auditLogs = exports.integrationLogs = exports.loyverseReceipts = exports.loyverseCustomers = exports.receiptClaims = exports.qrTokens = exports.promotions = exports.rewardRedemptions = exports.rewards = exports.pointsLedger = exports.purchases = exports.visits = exports.tiers = exports.loyaltyAccounts = exports.customers = exports.staffUsers = exports.rolePermissions = exports.permissions = exports.roles = void 0;
 const mysql_core_1 = require("drizzle-orm/mysql-core");
 const drizzle_orm_1 = require("drizzle-orm");
 // 1. Roles Table
@@ -49,6 +49,10 @@ exports.customers = (0, mysql_core_1.mysqlTable)("customers", {
     birthday: (0, mysql_core_1.date)("birthday"),
     favoriteCategory: (0, mysql_core_1.varchar)("favorite_category", { length: 50 }),
     consentPromotions: (0, mysql_core_1.boolean)("consent_promotions").default(false),
+    smsMarketingConsent: (0, mysql_core_1.boolean)("sms_marketing_consent").default(false).notNull(),
+    smsConsentAt: (0, mysql_core_1.datetime)("sms_consent_at"),
+    smsConsentSource: (0, mysql_core_1.varchar)("sms_consent_source", { length: 50 }),
+    smsOptOutAt: (0, mysql_core_1.datetime)("sms_opt_out_at"),
     status: (0, mysql_core_1.varchar)("status", { length: 20 }).default("active"),
     createdAt: (0, mysql_core_1.timestamp)("created_at").defaultNow(),
     updatedAt: (0, mysql_core_1.timestamp)("updated_at").defaultNow().onUpdateNow()
@@ -321,6 +325,45 @@ exports.settings = (0, mysql_core_1.mysqlTable)("settings", {
     updatedBy: (0, mysql_core_1.int)("updated_by"),
     updatedAt: (0, mysql_core_1.timestamp)("updated_at").defaultNow().onUpdateNow()
 });
+// 22. SMS Marketing Campaigns
+exports.smsCampaigns = (0, mysql_core_1.mysqlTable)("sms_campaigns", {
+    id: (0, mysql_core_1.int)("id").autoincrement().primaryKey(),
+    name: (0, mysql_core_1.varchar)("name", { length: 120 }).notNull(),
+    message: (0, mysql_core_1.text)("message").notNull(),
+    audienceType: (0, mysql_core_1.varchar)("audience_type", { length: 30 }).default("all").notNull(),
+    status: (0, mysql_core_1.varchar)("status", { length: 20 }).default("draft").notNull(),
+    scheduledAt: (0, mysql_core_1.datetime)("scheduled_at"),
+    startedAt: (0, mysql_core_1.datetime)("started_at"),
+    completedAt: (0, mysql_core_1.datetime)("completed_at"),
+    recipientCount: (0, mysql_core_1.int)("recipient_count").default(0).notNull(),
+    sentCount: (0, mysql_core_1.int)("sent_count").default(0).notNull(),
+    failedCount: (0, mysql_core_1.int)("failed_count").default(0).notNull(),
+    createdBy: (0, mysql_core_1.int)("created_by").notNull(),
+    createdAt: (0, mysql_core_1.timestamp)("created_at").defaultNow(),
+    updatedAt: (0, mysql_core_1.timestamp)("updated_at").defaultNow().onUpdateNow()
+}, (table) => ({
+    statusCreatedIdx: (0, mysql_core_1.index)("sms_campaign_status_created_idx").on(table.status, table.createdAt)
+}));
+// 23. SMS Delivery and Conversation Log
+exports.smsMessages = (0, mysql_core_1.mysqlTable)("sms_messages", {
+    id: (0, mysql_core_1.int)("id").autoincrement().primaryKey(),
+    campaignId: (0, mysql_core_1.int)("campaign_id"),
+    customerId: (0, mysql_core_1.int)("customer_id"),
+    direction: (0, mysql_core_1.varchar)("direction", { length: 10 }).notNull(), // outbound | inbound
+    fromNumber: (0, mysql_core_1.varchar)("from_number", { length: 25 }),
+    toNumber: (0, mysql_core_1.varchar)("to_number", { length: 25 }).notNull(),
+    body: (0, mysql_core_1.text)("body").notNull(),
+    status: (0, mysql_core_1.varchar)("status", { length: 30 }).default("queued").notNull(),
+    providerMessageSid: (0, mysql_core_1.varchar)("provider_message_sid", { length: 50 }).unique(),
+    errorCode: (0, mysql_core_1.varchar)("error_code", { length: 20 }),
+    errorMessage: (0, mysql_core_1.text)("error_message"),
+    sentAt: (0, mysql_core_1.datetime)("sent_at"),
+    deliveredAt: (0, mysql_core_1.datetime)("delivered_at"),
+    createdAt: (0, mysql_core_1.timestamp)("created_at").defaultNow()
+}, (table) => ({
+    campaignStatusIdx: (0, mysql_core_1.index)("sms_message_campaign_status_idx").on(table.campaignId, table.status),
+    customerCreatedIdx: (0, mysql_core_1.index)("sms_message_customer_created_idx").on(table.customerId, table.createdAt)
+}));
 // Define Relations
 exports.staffUsersRelations = (0, drizzle_orm_1.relations)(exports.staffUsers, ({ one }) => ({
     role: one(exports.roles, {

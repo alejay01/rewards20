@@ -15,6 +15,7 @@ export const ProfilePage: React.FC = () => {
   const [birthday, setBirthday] = useState("");
   const [favoriteCategory, setFavoriteCategory] = useState("Boudin Links");
   const [consentPromotions, setConsentPromotions] = useState(false);
+  const [smsMarketingConsent, setSmsMarketingConsent] = useState(false);
 
   useEffect(() => {
     if (customerUser?.customer) {
@@ -24,6 +25,7 @@ export const ProfilePage: React.FC = () => {
       setBirthday(c.birthday ? c.birthday.split("T")[0] : "");
       setFavoriteCategory(c.favoriteCategory || "Boudin Links");
       setConsentPromotions(c.consentPromotions || false);
+      setSmsMarketingConsent(c.smsMarketingConsent || false);
     }
   }, [customerUser]);
 
@@ -39,7 +41,8 @@ export const ProfilePage: React.FC = () => {
         lastName,
         birthday: birthday || undefined,
         favoriteCategory,
-        consentPromotions
+        consentPromotions,
+        smsMarketingConsent
       });
       await refreshCustomer();
       setSuccess(true);
@@ -166,7 +169,17 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="pt-2">
+        <div className="pt-2 space-y-3">
+          <label className="flex items-start gap-2.5 text-[11px] text-gray-600 font-bold cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={smsMarketingConsent}
+              onChange={(e) => setSmsMarketingConsent(e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 text-brand-red focus:ring-brand-red w-3.5 h-3.5"
+            />
+            <span>Send me recurring rewards and marketing texts. Message frequency varies; message and data rates may apply. Reply STOP to opt out or HELP for help.</span>
+          </label>
+
           <label className="flex items-start gap-2.5 text-[11px] text-gray-600 font-bold cursor-pointer select-none">
             <input 
               type="checkbox" 

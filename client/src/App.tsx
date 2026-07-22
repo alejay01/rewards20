@@ -11,6 +11,7 @@ import { OfflinePage } from "./pages/OfflinePage";
 import { StaffLoginPage } from "./pages/StaffLoginPage";
 import { TabletPage } from "./pages/TabletPage";
 import { AdminPage } from "./pages/AdminPage";
+import { PrivacyPage, SmsTermsPage, SupportPage } from "./pages/LegalPages";
 
 import { DashboardPage } from "./pages/DashboardPage";
 import { MyQrPage } from "./pages/MyQrPage";
@@ -49,6 +50,9 @@ export const App: React.FC = () => {
           <Route path="/join" element={<JoinPage />} />
           <Route path="/claim" element={<ClaimPage />} />
           <Route path="/offline" element={<OfflinePage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/sms-terms" element={<SmsTermsPage />} />
+          <Route path="/support" element={<SupportPage />} />
 
           {/* Staff Portal */}
           <Route path="/staff/login" element={<StaffLoginPage />} />

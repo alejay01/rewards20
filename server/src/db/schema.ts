@@ -64,6 +64,10 @@ export const customers = mysqlTable("customers", {
   birthday: date("birthday"),
   favoriteCategory: varchar("favorite_category", { length: 50 }),
   consentPromotions: boolean("consent_promotions").default(false),
+  smsMarketingConsent: boolean("sms_marketing_consent").default(false).notNull(),
+  smsConsentAt: datetime("sms_consent_at"),
+  smsConsentSource: varchar("sms_consent_source", { length: 50 }),
+  smsOptOutAt: datetime("sms_opt_out_at"),
   status: varchar("status", { length: 20 }).default("active"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow()
@@ -352,6 +356,47 @@ export const settings = mysqlTable("settings", {
   updatedBy: int("updated_by"),
   updatedAt: timestamp("updated_at").defaultNow().onUpdateNow()
 });
+
+// 22. SMS Marketing Campaigns
+export const smsCampaigns = mysqlTable("sms_campaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  message: text("message").notNull(),
+  audienceType: varchar("audience_type", { length: 30 }).default("all").notNull(),
+  status: varchar("status", { length: 20 }).default("draft").notNull(),
+  scheduledAt: datetime("scheduled_at"),
+  startedAt: datetime("started_at"),
+  completedAt: datetime("completed_at"),
+  recipientCount: int("recipient_count").default(0).notNull(),
+  sentCount: int("sent_count").default(0).notNull(),
+  failedCount: int("failed_count").default(0).notNull(),
+  createdBy: int("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().onUpdateNow()
+}, (table) => ({
+  statusCreatedIdx: index("sms_campaign_status_created_idx").on(table.status, table.createdAt)
+}));
+
+// 23. SMS Delivery and Conversation Log
+export const smsMessages = mysqlTable("sms_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  campaignId: int("campaign_id"),
+  customerId: int("customer_id"),
+  direction: varchar("direction", { length: 10 }).notNull(), // outbound | inbound
+  fromNumber: varchar("from_number", { length: 25 }),
+  toNumber: varchar("to_number", { length: 25 }).notNull(),
+  body: text("body").notNull(),
+  status: varchar("status", { length: 30 }).default("queued").notNull(),
+  providerMessageSid: varchar("provider_message_sid", { length: 50 }).unique(),
+  errorCode: varchar("error_code", { length: 20 }),
+  errorMessage: text("error_message"),
+  sentAt: datetime("sent_at"),
+  deliveredAt: datetime("delivered_at"),
+  createdAt: timestamp("created_at").defaultNow()
+}, (table) => ({
+  campaignStatusIdx: index("sms_message_campaign_status_idx").on(table.campaignId, table.status),
+  customerCreatedIdx: index("sms_message_customer_created_idx").on(table.customerId, table.createdAt)
+}));
 
 // Define Relations
 export const staffUsersRelations = relations(staffUsers, ({ one }) => ({

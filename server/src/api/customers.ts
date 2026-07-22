@@ -66,10 +66,14 @@ const joinSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   birthday: z.string().optional().or(z.literal("")),
   favoriteCategory: z.string().optional().or(z.literal("")),
-  consentPromotions: z.boolean().default(false)
+  consentPromotions: z.boolean().default(false),
+  smsMarketingConsent: z.boolean().default(false)
 }).refine(data => data.email || data.phone, {
   message: "Either Email or Phone Number must be provided to join.",
   path: ["email"]
+}).refine(data => !data.smsMarketingConsent || Boolean(data.phone), {
+  message: "A mobile phone number is required to opt in to SMS.",
+  path: ["phone"]
 });
 
 router.post("/join", async (req, res, next) => {
@@ -110,6 +114,10 @@ router.post("/join", async (req, res, next) => {
       birthday: data.birthday ? new Date(data.birthday) : null,
       favoriteCategory: data.favoriteCategory || null,
       consentPromotions: data.consentPromotions,
+      smsMarketingConsent: data.smsMarketingConsent,
+      smsConsentAt: data.smsMarketingConsent ? new Date() : null,
+      smsConsentSource: data.smsMarketingConsent ? "customer-signup-web" : null,
+      smsOptOutAt: null,
       status: "active"
     });
 
@@ -296,7 +304,11 @@ router.get("/me", authenticateCustomer, async (req: CustomerRequest, res, next) 
         phone: customer.phone,
         birthday: customer.birthday,
         favoriteCategory: customer.favoriteCategory,
-        consentPromotions: customer.consentPromotions
+        consentPromotions: customer.consentPromotions,
+        smsMarketingConsent: customer.smsMarketingConsent,
+        smsConsentAt: customer.smsConsentAt,
+        smsConsentSource: customer.smsConsentSource,
+        smsOptOutAt: customer.smsOptOutAt
       },
       loyalty: {
         rewardsNumber: account.rewardsNumber,
@@ -332,13 +344,25 @@ router.patch("/me", authenticateCustomer, async (req: CustomerRequest, res, next
       lastName: z.string().min(2).optional(),
       birthday: z.string().optional(),
       favoriteCategory: z.string().optional(),
-      consentPromotions: z.boolean().optional()
+      consentPromotions: z.boolean().optional(),
+      smsMarketingConsent: z.boolean().optional()
     });
 
     const data = updateSchema.parse(req.body);
     const updateData: any = { ...data };
     if (data.birthday) {
       updateData.birthday = new Date(data.birthday);
+    }
+    if (data.smsMarketingConsent === true) {
+      const current = await db.select().from(customers).where(eq(customers.id, req.customer.id));
+      if (!current[0]?.phone) {
+        return res.status(400).json({ error: "Add a mobile phone number before opting in to SMS." });
+      }
+      updateData.smsConsentAt = new Date();
+      updateData.smsConsentSource = "customer-profile-web";
+      updateData.smsOptOutAt = null;
+    } else if (data.smsMarketingConsent === false) {
+      updateData.smsOptOutAt = new Date();
     }
 
     await db.update(customers)

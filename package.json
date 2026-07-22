@@ -1,7 +1,7 @@
 {
-  "name": "the-boudin-company-rewards",
+  "name": "boudin-rewards-722",
   "version": "1.0.0",
-  "description": "Cajun-themed Loyalty and Rewards MVP for The Boudin Company",
+  "description": "Boudin Rewards 7-22 loyalty, guest experience, and permission-based marketing platform",
   "main": "server/dist/index.js",
   "scripts": {
     "install:all": "npm install && npm install --prefix client && npm install --prefix server",
@@ -16,5 +16,8 @@
     "concurrently": "^8.2.2"
   },
   "author": "Antigravity",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "shell-quote": "^1.9.0"
+  }
 }

@@ -13,6 +13,7 @@ import tabletRouter from "./api/tablet";
 import adminRouter from "./api/admin";
 import receiptsRouter from "./api/receipts";
 import qrRouter from "./api/qr";
+import { smsAdminRouter, smsWebhookRouter } from "./api/sms";
 
 import { errorHandler } from "./middleware/errorHandler";
 import { validateSecurityAccess } from "./middleware/auth";
@@ -65,10 +66,11 @@ app.get("/health", async (req, res) => {
 
 app.get("/version", (req, res) => {
   res.json({
-    version: "1.0.0",
-    projectName: "The Boudin Company Rewards",
-    codename: "Boudin Boss Rewards MVP",
-    releasedAt: "2026-05-27"
+    version: "1.1.0",
+    projectName: "Boudin Rewards 7-22",
+    tenantName: "The Boudin Company",
+    codename: "SMS Foundation",
+    releasedAt: "2026-07-22"
   });
 });
 
@@ -76,9 +78,11 @@ app.get("/version", (req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/customers", customersRouter);
 app.use("/api/tablet", tabletRouter);
+app.use("/api/admin/sms", smsAdminRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/receipt-claims", receiptsRouter);
 app.use("/api/qr", qrRouter);
+app.use("/api/sms/webhooks", smsWebhookRouter);
 
 // 3. Static Client serving (Production monolith architecture)
 const publicPath = path.join(__dirname, "public");

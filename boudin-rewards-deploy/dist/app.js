@@ -18,6 +18,7 @@ const tablet_1 = __importDefault(require("./api/tablet"));
 const admin_1 = __importDefault(require("./api/admin"));
 const receipts_1 = __importDefault(require("./api/receipts"));
 const qr_1 = __importDefault(require("./api/qr"));
+const sms_1 = require("./api/sms");
 const errorHandler_1 = require("./middleware/errorHandler");
 const auth_2 = require("./middleware/auth");
 const app = (0, express_1.default)();
@@ -64,19 +65,22 @@ app.get("/health", async (req, res) => {
 });
 app.get("/version", (req, res) => {
     res.json({
-        version: "1.0.0",
-        projectName: "The Boudin Company Rewards",
-        codename: "Boudin Boss Rewards MVP",
-        releasedAt: "2026-05-27"
+        version: "1.1.0",
+        projectName: "Boudin Rewards 7-22",
+        tenantName: "The Boudin Company",
+        codename: "SMS Foundation",
+        releasedAt: "2026-07-22"
     });
 });
 // 2. API Routes Mapping
 app.use("/api/auth", auth_1.default);
 app.use("/api/customers", customers_1.default);
 app.use("/api/tablet", tablet_1.default);
+app.use("/api/admin/sms", sms_1.smsAdminRouter);
 app.use("/api/admin", admin_1.default);
 app.use("/api/receipt-claims", receipts_1.default);
 app.use("/api/qr", qr_1.default);
+app.use("/api/sms/webhooks", sms_1.smsWebhookRouter);
 // 3. Static Client serving (Production monolith architecture)
 const publicPath = path_1.default.join(__dirname, "public");
 app.use(express_1.default.static(publicPath));
